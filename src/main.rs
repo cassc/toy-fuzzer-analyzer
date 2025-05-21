@@ -10,7 +10,6 @@ use std::fs::{self};
 use std::io::Read;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
-use std::sync::mpsc;
 use std::thread;
 use std::time::Duration;
 
@@ -69,28 +68,6 @@ fn run_program_with_timeout(
         .spawn()
         .wrap_err_with(|| format!("Failed to start program {}", program_path.display()))?;
 
-    // Take ownership of stdout and stderr streams
-    let mut stdout = child
-        .stdout
-        .take()
-        .ok_or_else(|| eyre::eyre!("Failed to capture stdout"))?;
-    let mut stderr = child
-        .stderr
-        .take()
-        .ok_or_else(|| eyre::eyre!("Failed to capture stderr"))?;
-
-    // Create a channel for communication between threads
-    let (tx, rx) = mpsc::channel();
-
-    // Spawn a thread to read output from stdout and stderr
-    let _handle = thread::spawn(move || {
-        let mut stdout_data = Vec::new();
-        let mut stderr_data = Vec::new();
-        stdout.read_to_end(&mut stdout_data).unwrap_or(0);
-        stderr.read_to_end(&mut stderr_data).unwrap_or(0);
-        tx.send((stdout_data, stderr_data)).unwrap();
-    });
-
     // Wait for output with a timeout
     let timeout = Duration::from_secs(timeout_seconds);
 
@@ -106,13 +83,17 @@ fn run_program_with_timeout(
             .wrap_err("Failed to wait for program process after kill")?;
     }
 
-    // Get results immediately
-    match rx.recv_timeout(Duration::from_secs(1)) {
-        Ok((stdout_data, _stderr_data)) => {
-            Ok(String::from_utf8_lossy(stdout_data.as_slice()).to_string())
-        }
-        Err(_) => Err(eyre!("Failed to receive output from program")),
-    }
+    let mut stdout_data = Vec::new();
+
+    // Take ownership of stdout and stderr streams
+    let mut stdout = child
+        .stdout
+        .take()
+        .ok_or_else(|| eyre::eyre!("Failed to capture stdout"))?;
+
+    stdout.read_to_end(&mut stdout_data).unwrap_or(0);
+
+    Ok(String::from_utf8_lossy(&stdout_data).to_string())
 }
 
 fn parse_log(log_content: &str, contract_id: &str) -> Result<Vec<StatsEntry>> {

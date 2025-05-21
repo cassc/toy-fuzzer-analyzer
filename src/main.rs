@@ -98,52 +98,28 @@ fn run_program_with_timeout(
     thread::sleep(timeout);
 
     // Get results immediately
-    match rx.recv_timeout(Duration::from_secs(0)) {
-        Ok((stdout_data, stderr_data)) => process_output(stdout_data, stderr_data),
-        Err(mpsc::RecvTimeoutError::Timeout) => {
-            // Timeout occurred, kill the process
-            child.kill().wrap_err("Failed to kill program process")?;
-            child
-                .wait()
-                .wrap_err("Failed to wait for program process after kill")?;
-            // Receive from the channel with a small additional timeout
-            match rx.recv_timeout(Duration::from_secs(1)) {
-                Ok((stdout_data, stderr_data)) => process_output(stdout_data, stderr_data),
-                Err(mpsc::RecvTimeoutError::Timeout) => {
-                    Err(eyre::eyre!("Failed to capture output after timeout"))
-                }
-                Err(mpsc::RecvTimeoutError::Disconnected) => {
-                    Err(eyre::eyre!("Program thread disconnected unexpectedly"))
+    let mut output = String::new();
+    loop {
+        match rx.recv_timeout(Duration::from_secs(0)) {
+            Ok((stdout_data, _stderr_data)) => {
+                if let Ok(output_str) = String::from_utf8(stdout_data) {
+                    output.push_str(&output_str);
                 }
             }
-        }
-        Err(mpsc::RecvTimeoutError::Disconnected) => {
-            Err(eyre::eyre!("Program thread disconnected unexpectedly"))
+            Err(mpsc::RecvTimeoutError::Timeout) => {
+                // Timeout occurred, kill the process
+                child.kill().wrap_err("Failed to kill program process")?;
+                child
+                    .wait()
+                    .wrap_err("Failed to wait for program process after kill")?;
+                break;
+            }
+            Err(mpsc::RecvTimeoutError::Disconnected) => {
+                break;
+            }
         }
     }
-}
-
-/// Processes the captured stdout and stderr data.
-///
-/// # Arguments
-/// * `stdout_data` - Raw stdout bytes.
-/// * `stderr_data` - Raw stderr bytes.
-///
-/// # Returns
-/// * `Ok(String)` - The stdout as a string if not empty.
-/// * `Err` - An error with stderr or a message if stdout is empty.
-fn process_output(stdout_data: Vec<u8>, stderr_data: Vec<u8>) -> Result<String> {
-    let stdout_str = String::from_utf8_lossy(&stdout_data).to_string();
-    let stderr_str = String::from_utf8_lossy(&stderr_data).to_string();
-    if !stdout_str.is_empty() {
-        println!("Program output: {}", stdout_str);
-        Ok(stdout_str)
-    } else if !stderr_str.is_empty() {
-        println!("Program error output: {}", stderr_str);
-        Err(eyre::eyre!("Program error output: {}", stderr_str))
-    } else {
-        Err(eyre::eyre!("Program did not produce any output"))
-    }
+    Ok(output)
 }
 
 fn parse_log(log_content: &str, contract_id: &str) -> Result<Vec<StatsEntry>> {

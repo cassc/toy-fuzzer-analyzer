@@ -85,6 +85,10 @@ fn run_fuzzer_and_capture_output(
         }
         Ok((None, Some(stderr))) => {
             let stderr_bytes = stderr.into_iter().collect::<Vec<u8>>();
+            println!(
+                "Fuzzer error output: {}",
+                String::from_utf8_lossy(&stderr_bytes)
+            );
 
             let _ = process.kill();
             let _ = process.wait();

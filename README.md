@@ -3,8 +3,8 @@
 ``` bash
 cargo install --path . --profile release --force --locked
 fuzzer_analyzer \
-    --fuzzer-path /opt/my_fuzzer/mau-ityfuzz \
-    --benchmark-base-dir /data/my_benchmarks \
+    --fuzzer-path ./mau-ityfuzz \
+    --benchmark-base-dir b1 \
     --output-dir ./results \
-    --fuzz-timeout-seconds 60
+    --fuzz-timeout-seconds 10
 ```

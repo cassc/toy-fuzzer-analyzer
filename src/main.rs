@@ -168,7 +168,7 @@ fn write_csv(contract_id: &str, entries: &[StatsEntry], output_path_base: &Path)
     let csv_path = output_path_base.join(format!("{}.instructions.stats.csv", contract_id));
     let mut wtr = Writer::from_path(&csv_path)
         .wrap_err_with(|| format!("Failed to create CSV writer for {}", csv_path.display()))?;
-    wtr.write_record(&[
+    wtr.write_record([
         "instructions_covered",
         "branches_covered",
         "time_taken_nanos",

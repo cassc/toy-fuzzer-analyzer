@@ -98,29 +98,21 @@ fn run_program_with_timeout(
     println!("Waiting for {} seconds...", timeout_seconds);
     thread::sleep(timeout);
 
-    // Get results immediately
-    let mut output = String::new();
-    loop {
-        match rx.recv_timeout(Duration::from_secs(1)) {
-            Ok((stdout_data, _stderr_data)) => {
-                println!(
-                    "Program output: {}",
-                    String::from_utf8_lossy(stdout_data.as_slice())
-                );
-                let output_str = String::from_utf8_lossy(stdout_data.as_slice()).to_string();
-                output.push_str(&output_str);
-            }
-            Err(_) => {
-                // Timeout occurred, kill the process
-                child.kill().wrap_err("Failed to kill program process")?;
-                child
-                    .wait()
-                    .wrap_err("Failed to wait for program process after kill")?;
-                break;
-            }
-        }
+    if let Ok(None) = child.try_wait() {
+        // Still running, kill it
+        child.kill().wrap_err("Failed to kill program process")?;
+        child
+            .wait()
+            .wrap_err("Failed to wait for program process after kill")?;
     }
-    Ok(output)
+
+    // Get results immediately
+    match rx.recv_timeout(Duration::from_secs(1)) {
+        Ok((stdout_data, _stderr_data)) => {
+            Ok(String::from_utf8_lossy(stdout_data.as_slice()).to_string())
+        }
+        Err(_) => Err(eyre!("Failed to receive output from program")),
+    }
 }
 
 fn parse_log(log_content: &str, contract_id: &str) -> Result<Vec<StatsEntry>> {

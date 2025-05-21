@@ -10,7 +10,7 @@ use std::fs::{self};
 use std::io::Read;
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
-use std::thread;
+use std::thread::{self, sleep};
 use std::time::Duration;
 
 #[derive(Parser, Debug)]
@@ -68,9 +68,10 @@ fn run_program_with_timeout(
     let child = Command::new("timeout")
         .args([&timeout_str, program_path, args])
         .stdout(Stdio::piped())
-        .stderr(Stdio::piped())
         .spawn()
         .wrap_err_with(|| format!("Failed to start program {}", program_path))?;
+
+    sleep(Duration::from_secs(timeout_seconds));
 
     let output = child.wait_with_output()?;
     let output_str = String::from_utf8_lossy(&output.stdout).to_string();

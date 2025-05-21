@@ -93,7 +93,12 @@ fn run_program_with_timeout(
 
     // Wait for output with a timeout
     let timeout = Duration::from_secs(timeout_seconds);
-    match rx.recv_timeout(timeout) {
+
+    // Sleep for the timeout duration
+    thread::sleep(timeout);
+
+    // Get results immediately
+    match rx.recv_timeout(Duration::from_secs(0)) {
         Ok((stdout_data, stderr_data)) => process_output(stdout_data, stderr_data),
         Err(mpsc::RecvTimeoutError::Timeout) => {
             // Timeout occurred, kill the process

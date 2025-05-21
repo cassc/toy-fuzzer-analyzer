@@ -73,6 +73,7 @@ fn run_fuzzer_and_capture_output(
 
     match process.communicate_bytes(None) {
         Ok((Some(stdout), _)) => {
+            println!("Fuzzer output: {}", String::from_utf8_lossy(&stdout));
             let stdout_bytes = stdout.into_iter().collect::<Vec<u8>>();
 
             let _ = process.kill();

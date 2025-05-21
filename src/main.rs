@@ -60,40 +60,22 @@ fn run_program_with_timeout(
         )
     })?;
 
+    let program_path = absolute_path.to_str().unwrap();
+
+    let timeout_str = timeout_seconds.to_string();
+
     // Spawn the program with piped stdout and stderr
-    let mut child = Command::new(&absolute_path)
-        .args([args])
+    let child = Command::new("timeout")
+        .args([&timeout_str, program_path, args])
         .stdout(Stdio::piped())
         .stderr(Stdio::piped())
         .spawn()
-        .wrap_err_with(|| format!("Failed to start program {}", program_path.display()))?;
+        .wrap_err_with(|| format!("Failed to start program {}", program_path))?;
 
-    // Take ownership of stdout and stderr streams
-    let mut stdout = child
-        .stdout
-        .take()
-        .ok_or_else(|| eyre::eyre!("Failed to capture stdout"))?;
+    let output = child.wait_with_output()?;
+    let output_str = String::from_utf8_lossy(&output.stdout).to_string();
 
-    // Wait for output with a timeout
-    let timeout = Duration::from_secs(timeout_seconds);
-
-    // Sleep for the timeout duration
-    println!("Waiting for {} seconds...", timeout_seconds);
-    thread::sleep(timeout);
-
-    if let Ok(None) = child.try_wait() {
-        // Still running, kill it
-        child.kill().wrap_err("Failed to kill program process")?;
-        child
-            .wait()
-            .wrap_err("Failed to wait for program process after kill")?;
-    }
-
-    let mut stdout_data = Vec::new();
-
-    stdout.read_to_end(&mut stdout_data).unwrap_or(0);
-
-    Ok(String::from_utf8_lossy(&stdout_data).to_string())
+    Ok(output_str)
 }
 
 fn parse_log(log_content: &str, contract_id: &str) -> Result<Vec<StatsEntry>> {

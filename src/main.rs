@@ -95,6 +95,7 @@ fn run_program_with_timeout(
     let timeout = Duration::from_secs(timeout_seconds);
 
     // Sleep for the timeout duration
+    println!("Waiting for {} seconds...", timeout_seconds);
     thread::sleep(timeout);
 
     // Get results immediately

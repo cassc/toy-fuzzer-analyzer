@@ -100,21 +100,21 @@ fn run_program_with_timeout(
     // Get results immediately
     let mut output = String::new();
     loop {
-        match rx.recv_timeout(Duration::from_secs(0)) {
+        match rx.recv_timeout(Duration::from_secs(1)) {
             Ok((stdout_data, _stderr_data)) => {
-                if let Ok(output_str) = String::from_utf8(stdout_data) {
-                    output.push_str(&output_str);
-                }
+                println!(
+                    "Program output: {}",
+                    String::from_utf8_lossy(stdout_data.as_slice())
+                );
+                let output_str = String::from_utf8_lossy(stdout_data.as_slice()).to_string();
+                output.push_str(&output_str);
             }
-            Err(mpsc::RecvTimeoutError::Timeout) => {
+            Err(_) => {
                 // Timeout occurred, kill the process
                 child.kill().wrap_err("Failed to kill program process")?;
                 child
                     .wait()
                     .wrap_err("Failed to wait for program process after kill")?;
-                break;
-            }
-            Err(mpsc::RecvTimeoutError::Disconnected) => {
                 break;
             }
         }

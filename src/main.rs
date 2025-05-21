@@ -68,6 +68,12 @@ fn run_program_with_timeout(
         .spawn()
         .wrap_err_with(|| format!("Failed to start program {}", program_path.display()))?;
 
+    // Take ownership of stdout and stderr streams
+    let mut stdout = child
+        .stdout
+        .take()
+        .ok_or_else(|| eyre::eyre!("Failed to capture stdout"))?;
+
     // Wait for output with a timeout
     let timeout = Duration::from_secs(timeout_seconds);
 
@@ -84,12 +90,6 @@ fn run_program_with_timeout(
     }
 
     let mut stdout_data = Vec::new();
-
-    // Take ownership of stdout and stderr streams
-    let mut stdout = child
-        .stdout
-        .take()
-        .ok_or_else(|| eyre::eyre!("Failed to capture stdout"))?;
 
     stdout.read_to_end(&mut stdout_data).unwrap_or(0);
 

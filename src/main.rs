@@ -71,9 +71,6 @@ fn run_fuzzer_and_capture_output(
         .popen()
         .wrap_err_with(|| format!("Failed to start fuzzer for {}", contract_dir_glob))?;
 
-    let _ = process.kill();
-
-    // Some(())
     match process.communicate_bytes(None) {
         Ok((Some(stdout), _)) => {
             let stdout_bytes = stdout.into_iter().collect::<Vec<u8>>();

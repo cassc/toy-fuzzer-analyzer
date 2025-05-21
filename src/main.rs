@@ -280,7 +280,6 @@ fn aggregate_and_plot_data(
 }
 
 fn main() -> Result<()> {
-    color_eyre::install()?; // For pretty panic/error reports
     let args = Args::parse(); // Parse command line arguments
 
     fs::create_dir_all(&args.output_dir).wrap_err_with(|| {

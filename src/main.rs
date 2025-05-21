@@ -9,7 +9,7 @@ use std::collections::{BTreeMap, HashMap};
 use std::fs::{self};
 use std::io::Read;
 use std::path::{Path, PathBuf};
-use std::process::{Command, Stdio};
+use std::process::{Command, CommandArgs, Stdio};
 use std::thread::{self, sleep};
 use std::time::Duration;
 
@@ -42,7 +42,7 @@ struct StatsEntry {
 
 fn run_program_with_timeout(
     program_path: &Path,
-    args: &str,
+    args: &[&str],
     timeout_seconds: u64,
 ) -> Result<String> {
     println!(
@@ -66,7 +66,8 @@ fn run_program_with_timeout(
 
     // Spawn the program with piped stdout and stderr
     let child = Command::new("timeout")
-        .args([&timeout_str, program_path, args])
+        .args([&timeout_str, program_path])
+        .args(args)
         .stdout(Stdio::piped())
         .spawn()
         .wrap_err_with(|| format!("Failed to start program {}", program_path))?;
@@ -299,11 +300,8 @@ fn main() -> Result<()> {
 
         let contract_files_glob = format!("{}/*", contract_dir_path.to_string_lossy());
 
-        match run_program_with_timeout(
-            &args.fuzzer_path,
-            &contract_files_glob,
-            args.fuzz_timeout_seconds,
-        ) {
+        let options = ["-t", &contract_files_glob];
+        match run_program_with_timeout(&args.fuzzer_path, &options[..], args.fuzz_timeout_seconds) {
             Ok(log_content) => {
                 if log_content.trim().is_empty() {
                     println!(

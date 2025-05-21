@@ -4,11 +4,15 @@ use eyre::{Result, WrapErr, eyre};
 use glob::glob;
 use plotters::prelude::*;
 use regex::Regex;
+use std::io::Read;
 use serde::Serialize;
 use std::collections::{BTreeMap, HashMap};
 use std::fs::{self};
 use std::path::{Path, PathBuf};
-use subprocess::{Exec, Popen, Redirection}; // Import Parser
+use std::process::{Command, Stdio};
+use std::sync::mpsc;
+use std::thread;
+use std::time::Duration;
 
 #[derive(Parser, Debug)]
 #[command(author, version, about = "Analyzes fuzzer output for coverage over time", long_about = None)]
@@ -47,6 +51,7 @@ fn run_fuzzer_and_capture_output(
         contract_dir_glob, timeout_seconds
     );
 
+    // Canonicalize the fuzzer path
     let absolute_fuzzer_path = fs::canonicalize(fuzzer_path).wrap_err_with(|| {
         format!(
             "Fuzzer executable not found or path invalid: {}",
@@ -54,58 +59,77 @@ fn run_fuzzer_and_capture_output(
         )
     })?;
 
+    // Set up the runner directory for LD_LIBRARY_PATH
     let runner_dir = absolute_fuzzer_path
         .parent()
         .unwrap_or_else(|| Path::new("."))
         .join("runner");
     let runner_dir_str = runner_dir
         .to_str()
-        .ok_or_else(|| eyre!("Runner directory path {:?} is not valid UTF-8", runner_dir))?;
+        .ok_or_else(|| eyre::eyre!("Runner directory path {:?} is not valid UTF-8", runner_dir))?;
 
-    let mut process: Popen = Exec::cmd(absolute_fuzzer_path)
+    // Spawn the fuzzer process with piped stdout and stderr
+    let mut child = Command::new(&absolute_fuzzer_path)
         .arg("-t")
         .arg(contract_dir_glob)
         .env("LD_LIBRARY_PATH", runner_dir_str)
-        .stdout(Redirection::Pipe)
-        .stderr(Redirection::Pipe)
-        .popen()
+        .stdout(Stdio::piped())
+        .stderr(Stdio::piped())
+        .spawn()
         .wrap_err_with(|| format!("Failed to start fuzzer for {}", contract_dir_glob))?;
 
-    match process.communicate_bytes(None) {
-        Ok((Some(stdout), _)) => {
-            println!("Fuzzer output: {}", String::from_utf8_lossy(&stdout));
-            let stdout_bytes = stdout.into_iter().collect::<Vec<u8>>();
+    // Take ownership of stdout and stderr streams
+    let mut stdout = child
+        .stdout
+        .take()
+        .ok_or_else(|| eyre::eyre!("Failed to capture stdout"))?;
+    let mut stderr = child
+        .stderr
+        .take()
+        .ok_or_else(|| eyre::eyre!("Failed to capture stderr"))?;
 
-            let _ = process.kill();
-            let _ = process.wait();
+    // Create a channel for communication between threads
+    let (tx, rx) = mpsc::channel();
 
-            let stdout_str = String::from_utf8_lossy(&stdout_bytes).into_owned();
+    // Spawn a thread to read output from stdout and stderr
+    let _handle = thread::spawn(move || {
+        let mut stdout_data = Vec::new();
+        let mut stderr_data = Vec::new();
+        stdout.read_to_end(&mut stdout_data).unwrap_or(0);
+        stderr.read_to_end(&mut stderr_data).unwrap_or(0);
+        tx.send((stdout_data, stderr_data)).unwrap();
+    });
 
-            Ok(stdout_str)
+    // Wait for output with a timeout
+    let timeout = Duration::from_secs(timeout_seconds);
+    match rx.recv_timeout(timeout) {
+        Ok((stdout_data, stderr_data)) => {
+            let stdout_str = String::from_utf8_lossy(&stdout_data).to_string();
+            let stderr_str = String::from_utf8_lossy(&stderr_data).to_string();
+
+            if !stdout_str.is_empty() {
+                println!("Fuzzer output: {}", stdout_str);
+                Ok(stdout_str)
+            } else if !stderr_str.is_empty() {
+                println!("Fuzzer error output: {}", stderr_str);
+                Err(eyre::eyre!("Fuzzer error output: {}", stderr_str))
+            } else {
+                Err(eyre::eyre!("Fuzzer did not produce any output"))
+            }
         }
-        Ok((None, Some(stderr))) => {
-            let stderr_bytes = stderr.into_iter().collect::<Vec<u8>>();
-            println!(
-                "Fuzzer error output: {}",
-                String::from_utf8_lossy(&stderr_bytes)
-            );
-
-            let _ = process.kill();
-            let _ = process.wait();
-            let stderr_str = String::from_utf8_lossy(&stderr_bytes).into_owned();
-            Err(eyre!("Fuzzer error output: {}", stderr_str,))
+        Err(mpsc::RecvTimeoutError::Timeout) => {
+            // Kill the process if timeout occurs
+            child.kill().wrap_err("Failed to kill fuzzer process")?;
+            child
+                .wait()
+                .wrap_err("Failed to wait for fuzzer process after kill")?;
+            Err(eyre::eyre!(
+                "Fuzzer timed out after {} seconds",
+                timeout_seconds
+            ))
         }
-        Ok((None, None)) => {
-            let _ = process.kill();
-            let _ = process.wait();
-            Err(eyre!("Fuzzer did not produce any output"))
-        }
-        Err(e) => {
-            let _ = process.kill();
-            let _ = process.wait();
-            Err(e).wrap_err_with(|| {
-                format!("Fuzzer communication I/O error for {}", contract_dir_glob)
-            })
+        Err(mpsc::RecvTimeoutError::Disconnected) => {
+            Err(eyre::eyre!("Fuzzer thread disconnected unexpectedly"))
         }
     }
 }

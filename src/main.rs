@@ -7,11 +7,8 @@ use regex::Regex;
 use serde::{Deserialize, Serialize}; // Added Deserialize
 use std::collections::{BTreeMap, HashMap};
 use std::fs::{self};
-// use std::io::Read; // Removed, not used
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
-use std::thread::{self, sleep}; // Removed, sleep in run_program_with_timeout is removed
-use std::time::Duration; // Still used for Duration::from_secs if any other sleep is needed, but not here
 
 #[derive(Parser, Debug)]
 #[command(author, version, about = "Analyzes fuzzer output or plots existing data", long_about = None)]
@@ -96,10 +93,6 @@ fn run_program_with_timeout(
         .stderr(Stdio::piped()) // Capture stderr
         .spawn()
         .wrap_err_with(|| format!("Failed to start program {}", program_path.display()))?;
-
-    // The `sleep` call that was here is removed. `timeout` command handles the timeout.
-    sleep(Duration::from_secs(timeout_seconds));
-    // `child.wait_with_output()` will block until the `timeout` command itself finishes.
 
     let output = child.wait_with_output()?;
     let stdout_str = String::from_utf8_lossy(&output.stdout).to_string();

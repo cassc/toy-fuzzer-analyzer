@@ -7,6 +7,8 @@
 # Install binary
 cargo install --path . --profile release --force --locked
 
+# Select or install solc version 0.4.25
+
 # Compile the contracts
 fuzzer_analyzer compile --solc-input-dir ../mau-ityfuzz/release/benchmarks/B1/sol/ --solc-output-dir b1 --list-file ../mau-ityfuzz/release/benchmarks/assets/B1.list
 

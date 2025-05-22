@@ -10,6 +10,7 @@ use eyre::{Context, Result, eyre};
 pub fn handle_compile_command(args: CompileArgs) -> Result<()> {
     println!("Starting contract compilation and filtering process...");
     println!("Reading contract list from: {}", args.list_file.display());
+    let mut failed_contracts = Vec::new();
     println!(
         "Solidity source directory: {}",
         args.solc_input_dir.display()
@@ -111,10 +112,11 @@ pub fn handle_compile_command(args: CompileArgs) -> Result<()> {
         ];
 
         println!("  Compiling with: solc {}", solc_args.join(" "));
+        let solc_binary = args.solc_binary.as_deref().unwrap_or("solc".as_ref());
         let mut command = Command::new("timeout");
         command
             .arg(format!("{}s", args.solc_timeout_seconds))
-            .arg("solc")
+            .arg(solc_binary)
             .args(solc_args)
             .stdout(Stdio::piped())
             .stderr(Stdio::piped());
@@ -122,13 +124,29 @@ pub fn handle_compile_command(args: CompileArgs) -> Result<()> {
         println!("  Running with timeout: {:?}", command);
         let solc_status = command
             .status() // Use status() for simple success/failure, or output() to capture
-            .wrap_err("Failed to execute solc with timeout. Is timeout and solc installed and in PATH?")?;
+            .wrap_err_with(|| format!("Failed to execute solc ({}) with timeout. Is timeout and solc installed?", solc_binary.display()))?;
 
-        if !solc_status.success() {
+        let mut compilation_success = solc_status.success();
+        
+        // Verify output files exist
+        if compilation_success {
+            let abi_path = specific_output_dir.join(format!("{}.abi", main_contract_name));
+            let bin_path = specific_output_dir.join(format!("{}.bin", main_contract_name));
+            let bin_runtime_path = specific_output_dir.join(format!("{}.bin-runtime", main_contract_name));
+            
+            compilation_success = abi_path.exists() && bin_path.exists() && bin_runtime_path.exists();
+            
+            if !compilation_success {
+                eprintln!("  ERROR: Output files missing for {}", sol_filename_base);
+            }
+        }
+
+        if !compilation_success {
             eprintln!(
-                "  ERROR: Solc compilation failed for {} with status: {}. Check solc output if any.",
+                "  ERROR: Solc compilation failed for {} with status: {}",
                 sol_filename_base, solc_status
             );
+            failed_contracts.push(sol_filename_base.to_string());
             continue;
         }
         println!("  Compilation successful for {}.", sol_filename_base);
@@ -170,5 +188,15 @@ pub fn handle_compile_command(args: CompileArgs) -> Result<()> {
     }
 
     println!("\nAll contract processing finished.");
+    
+    if !failed_contracts.is_empty() {
+        println!("\nFailed to compile {} contracts:", failed_contracts.len());
+        for contract in failed_contracts {
+            println!("  - {}", contract);
+        }
+    } else {
+        println!("\nAll contracts compiled successfully.");
+    }
+    
     Ok(())
 }

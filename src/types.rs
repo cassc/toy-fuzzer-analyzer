@@ -25,6 +25,10 @@ pub struct CompileArgs {
     /// Timeout in seconds for solc compilation per contract
     #[arg(long, value_name = "SECONDS", default_value_t = 30)]
     pub solc_timeout_seconds: u64,
+
+    /// Path to solc binary (defaults to 'solc' in PATH)
+    #[arg(long, value_name = "PATH")]
+    pub solc_binary: Option<PathBuf>,
 }
 
 #[derive(Parser, Debug)]

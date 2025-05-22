@@ -193,12 +193,6 @@ fn write_csv(contract_id: &str, entries: &[StatsEntry], output_path_base: &Path)
     let csv_path = output_path_base.join(format!("{}.instructions.stats.csv", contract_id));
     let mut wtr = Writer::from_path(&csv_path)
         .wrap_err_with(|| format!("Failed to create CSV writer for {}", csv_path.display()))?;
-    wtr.write_record([
-        "instructions_covered",
-        "branches_covered",
-        "time_taken_nanos",
-    ])
-    .wrap_err("Failed to write CSV header")?;
     for entry in entries {
         wtr.serialize(entry)
             .wrap_err("Failed to serialize entry to CSV")?;
@@ -362,14 +356,7 @@ fn handle_run_command(args: RunArgs) -> Result<()> {
             .into_owned();
 
         let contract_files_glob = format!("{}/*", contract_dir_path.to_string_lossy());
-        let options = ["-t", &contract_files_glob]; // -t requires a single target, not a glob pattern for files. This might be a misunderstanding of fuzzer's -t.
-        // Assuming fuzzer's -t option expects a directory or a specific file.
-        // If it expects a directory, then contract_dir_path itself should be used.
-        // If it expects all files in the directory, the fuzzer must support glob itself or be called per file.
-        // For now, keeping original logic, but noting potential issue with `contract_files_glob` as a fuzzer arg.
-        // If the fuzzer expects a directory, this should be:
-        // let target_path_str = contract_dir_path.to_str().ok_or_else(...)
-        // let options = ["-t", target_path_str];
+        let options = ["-t", &contract_files_glob];
 
         match run_program_with_timeout(&args.fuzzer_path, &options[..], args.fuzz_timeout_seconds) {
             Ok(log_content) => {

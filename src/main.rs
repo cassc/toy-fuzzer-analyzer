@@ -255,9 +255,9 @@ fn aggregate_and_plot_data(
     let plot_data: Vec<(f64, f64)> = aggregated_instructions_over_time
         .into_iter()
         .map(|(time_ns, instr_count)| {
-            let time_minutes = time_ns as f64 / (1_000_000_000.0 * 60.0);
+            let time_seconds = time_ns as f64 / 1_000_000_000.0;
             let instructions_k = instr_count as f64 / 1000.0;
-            (time_minutes, instructions_k)
+            (time_seconds, instructions_k)
         })
         .collect();
 
@@ -273,11 +273,11 @@ fn aggregate_and_plot_data(
         .fill(&WHITE)
         .wrap_err("Failed to fill plot background")?;
 
-    let max_time_minutes = plot_data.iter().map(|(t, _)| *t).fold(0.0_f64, f64::max) * 1.1;
+    let max_time_seconds = plot_data.iter().map(|(t, _)| *t).fold(0.0_f64, f64::max) * 1.1;
     let max_instr_k = plot_data.iter().map(|(_, i)| *i).fold(0.0_f64, f64::max) * 1.1;
 
-    let x_axis_max = if max_time_minutes > 0.0 {
-        max_time_minutes
+    let x_axis_max = if max_time_seconds > 0.0 {
+        max_time_seconds
     } else {
         1.0
     };
@@ -296,7 +296,7 @@ fn aggregate_and_plot_data(
 
     chart
         .configure_mesh()
-        .x_desc("Time (minutes)")
+        .x_desc("Time (seconds)")
         .y_desc("Number of Instructions / 10^3")
         .draw()
         .wrap_err("Failed to draw chart mesh")?;

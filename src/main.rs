@@ -1,62 +1,21 @@
 use clap::{Parser, Subcommand};
+use compile::handle_compile_command;
 use csv::{Reader, Writer}; // Added Reader
 use eyre::{Result, WrapErr, eyre};
 use glob::glob;
 use plotters::prelude::*;
 use regex::Regex;
-use serde::{Deserialize, Serialize}; // Added Deserialize
+use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, HashMap};
 use std::fs::{self};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
+use types::{Cli, Commands, CompileArgs, PlotArgs, RunArgs}; // Added Deserialize
 
-#[derive(Parser, Debug)]
-#[command(author, version, about = "Analyzes fuzzer output or plots existing data", long_about = None)]
-struct Cli {
-    #[command(subcommand)]
-    command: Commands,
-}
+mod compile;
+mod types;
 
-#[derive(Subcommand, Debug)]
-enum Commands {
-    /// Run the fuzzer, analyze output, write CSVs, and plot results
-    Run(RunArgs),
-    /// Plot results from existing CSV data in the output directory
-    Plot(PlotArgs),
-}
-
-#[derive(Parser, Debug)]
-struct RunArgs {
-    /// Path to the fuzzer executable
-    #[arg(short, long, value_name = "FILE", default_value = "./mau-ityfuzz")]
-    fuzzer_path: PathBuf,
-
-    /// Base directory containing benchmark contract directories (e.g., b1)
-    #[arg(short, long, value_name = "DIR")]
-    benchmark_base_dir: PathBuf,
-
-    /// Output directory for CSV files and the plot
-    #[arg(short, long, value_name = "DIR", default_value = "analysis_output")]
-    output_dir: PathBuf,
-
-    /// Timeout in seconds for running the fuzzer on each contract
-    #[arg(long, value_name = "SECONDS", default_value_t = 15)]
-    fuzz_timeout_seconds: u64,
-}
-
-#[derive(Parser, Debug)]
-struct PlotArgs {
-    /// Directory containing the CSV data files and where the plot will be saved
-    #[arg(short, long, value_name = "DIR", default_value = "analysis_output")]
-    output_dir: PathBuf,
-}
-
-#[derive(Debug, Serialize, Deserialize)] // Added Deserialize
-struct StatsEntry {
-    instructions_covered: u64,
-    branches_covered: u64,
-    time_taken_nanos: u64,
-}
+use crate::types::StatsEntry;
 
 fn run_program_with_timeout(
     program_path: &Path,
@@ -556,6 +515,10 @@ fn main() -> Result<()> {
         Commands::Plot(args) => {
             println!("Executing 'plot' command...");
             handle_plot_command(args)?;
+        }
+        Commands::Compile(args) => {
+            println!("Executing 'compile' command...");
+            handle_compile_command(args)?;
         }
     }
 

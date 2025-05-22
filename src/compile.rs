@@ -173,8 +173,9 @@ pub fn handle_compile_command(args: CompileArgs) -> Result<()> {
             if file_path.is_file() {
                 let filename_osstr = entry.file_name();
                 let filename_str = filename_osstr.to_string_lossy();
+                let file_prefix_to_keep = format!("{}.", main_contract_name);
 
-                if filename_str.starts_with(main_contract_name) {
+                if filename_str.starts_with(&file_prefix_to_keep) {
                     println!("    Keeping: {}", filename_str);
                     kept_count += 1;
                 } else {

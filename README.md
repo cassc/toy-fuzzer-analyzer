@@ -21,8 +21,15 @@ fuzzer_analyzer compile --solc-input-dir ../mau-ityfuzz/release/benchmarks/B3/so
 fuzzer_analyzer run \
     --fuzzer-path ./mau-ityfuzz \
     --benchmark-base-dir b1 \
-    --output-dir ./results \
+    --output-dir ./b1-results \
     --fuzz-timeout-seconds 10
+
+fuzzer_analyzer run \
+    --fuzzer-path ./mau-ityfuzz \
+    --benchmark-base-dir b3 \
+    --output-dir ./b3-results \
+    --fuzz-timeout-seconds 10
+
 
 # Plot the results
 fuzzer_analyzer plot --output-dir ./results

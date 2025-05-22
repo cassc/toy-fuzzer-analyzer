@@ -13,3 +13,4 @@ chrono = "0.4"
 subprocess = "0.2.9"
 eyre = "0.6"
 clap = { version = "4.5.38", features = ["derive"] }
+indicatif = "0.17.8"

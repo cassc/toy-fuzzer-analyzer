@@ -6,6 +6,7 @@ use std::{
 
 use crate::types::CompileArgs;
 use eyre::{Context, Result, eyre};
+use indicatif::{ProgressBar, ProgressStyle};
 
 pub fn handle_compile_command(args: CompileArgs) -> Result<()> {
     println!("Starting contract compilation and filtering process...");
@@ -41,7 +42,23 @@ pub fn handle_compile_command(args: CompileArgs) -> Result<()> {
         .wrap_err_with(|| format!("Failed to open list file: {}", args.list_file.display()))?;
     let reader = BufReader::new(file);
 
+    // Count total lines first for progress bar
+    let total_lines = reader.lines().count();
+    let file = File::open(&args.list_file)?;
+    let reader = BufReader::new(file);
+
+    let pb = ProgressBar::new(total_lines as u64);
+    pb.set_style(
+        ProgressStyle::with_template(
+            "{spinner:.green} [{elapsed_precise}] [{wide_bar:.cyan/blue}] {pos}/{len} ({eta})\n{msg}",
+        )
+        .unwrap()
+        .progress_chars("█▓▒░ "),
+    );
+    pb.set_message("Starting compilation...");
+
     for (line_number, line_result) in reader.lines().enumerate() {
+        pb.inc(1);
         let line = line_result.wrap_err_with(|| {
             format!(
                 "Failed to read line {} from {}",
@@ -83,10 +100,10 @@ pub fn handle_compile_command(args: CompileArgs) -> Result<()> {
 
         let specific_output_dir = args.solc_output_dir.join(sol_filename_base);
 
-        println!(
-            "\nProcessing {} (Main Contract: {})...",
+        pb.set_message(format!(
+            "Processing {} (Main Contract: {})",
             sol_filename_base, main_contract_name
-        );
+        ));
 
         // Ensure the specific output directory for this contract exists
         fs::create_dir_all(&specific_output_dir).wrap_err_with(|| {

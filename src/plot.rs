@@ -6,7 +6,8 @@ use plotters::prelude::*;
 use std::collections::{BTreeMap, HashMap};
 use std::fs::{self};
 use std::path::Path;
- // Added Deserialize
+use tracing::debug;
+// Added Deserialize
 
 fn read_stats_from_csv(csv_path: &Path) -> Result<Vec<StatsEntry>> {
     let mut rdr = Reader::from_path(csv_path)
@@ -26,7 +27,7 @@ pub fn aggregate_and_plot_data(
     plot_output_dir: &Path, // Renamed for clarity, this is where the plot is saved
 ) -> Result<()> {
     if all_contract_stats.is_empty() {
-        println!("No data to plot.");
+        debug!("No data to plot.");
         return Ok(());
     }
 
@@ -42,7 +43,7 @@ pub fn aggregate_and_plot_data(
     all_timestamps.dedup();
 
     if all_timestamps.is_empty() {
-        println!("No timestamps found in data. Skipping plot.");
+        debug!("No timestamps found in data. Skipping plot.");
         return Ok(());
     }
 
@@ -69,7 +70,7 @@ pub fn aggregate_and_plot_data(
         .collect();
 
     if plot_data.is_empty() {
-        println!("Aggregated plot data is empty. Skipping plot generation.");
+        debug!("Aggregated plot data is empty. Skipping plot generation.");
         return Ok(());
     }
 
@@ -113,7 +114,7 @@ pub fn aggregate_and_plot_data(
         .wrap_err("Failed to draw data series on chart")?;
 
     root_area.present().wrap_err("Failed to present chart")?;
-    println!("Plot saved to {}", plot_path.display());
+    debug!("Plot saved to {}", plot_path.display());
 
     Ok(())
 }
@@ -139,7 +140,7 @@ pub fn handle_plot_command(args: PlotArgs) -> Result<()> {
         .to_string_lossy()
         .into_owned();
 
-    println!("Looking for CSV files matching: {}", csv_glob_pattern_str);
+    debug!("Looking for CSV files matching: {}", csv_glob_pattern_str);
 
     let glob_results = glob(&csv_glob_pattern_str).wrap_err_with(|| {
         format!(
@@ -160,7 +161,7 @@ pub fn handle_plot_command(args: PlotArgs) -> Result<()> {
 
                 if let Some(contract_id_str) = filename.strip_suffix(".instructions.stats.csv") {
                     let contract_id = contract_id_str.to_owned();
-                    println!(
+                    debug!(
                         "Reading data for contract: {} from {}",
                         contract_id,
                         csv_path.display()
@@ -168,13 +169,13 @@ pub fn handle_plot_command(args: PlotArgs) -> Result<()> {
                     match read_stats_from_csv(&csv_path) {
                         Ok(entries) => {
                             if entries.is_empty() {
-                                println!(
+                                debug!(
                                     "No entries found in CSV for contract {}: {}",
                                     contract_id,
                                     csv_path.display()
                                 );
                             } else {
-                                println!(
+                                debug!(
                                     "Read {} entries for contract {} from {}",
                                     entries.len(),
                                     contract_id,
@@ -184,7 +185,7 @@ pub fn handle_plot_command(args: PlotArgs) -> Result<()> {
                             }
                         }
                         Err(e) => {
-                            eprintln!(
+                            debug!(
                                 "Error reading or parsing CSV file {}: {:?}",
                                 csv_path.display(),
                                 e
@@ -193,27 +194,27 @@ pub fn handle_plot_command(args: PlotArgs) -> Result<()> {
                     }
                 } else {
                     // This case should ideally not happen if glob pattern is specific enough
-                    println!(
+                    debug!(
                         "Skipping file not matching expected pattern suffix: {}",
                         csv_path.display()
                     );
                 }
             }
             Err(e) => {
-                eprintln!("Error accessing file during CSV glob: {:?}", e);
+                debug!("Error accessing file during CSV glob: {:?}", e);
             }
         }
     }
 
     if !found_csv_files {
-        println!(
+        debug!(
             "No CSV files found matching pattern '{}'.",
             csv_glob_pattern_str
         );
     }
 
     if all_contract_stats.is_empty() {
-        println!("No data loaded from CSV files. Cannot generate aggregate plot.");
+        debug!("No data loaded from CSV files. Cannot generate aggregate plot.");
         return Ok(());
     }
 
@@ -227,7 +228,7 @@ pub fn handle_plot_command(args: PlotArgs) -> Result<()> {
     })?;
 
     aggregate_and_plot_data(&all_contract_stats, &args.output_dir)?;
-    println!(
+    debug!(
         "Plot command complete. Plot is in the '{}' directory.",
         args.output_dir.display()
     );

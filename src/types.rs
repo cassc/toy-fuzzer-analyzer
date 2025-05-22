@@ -21,6 +21,10 @@ pub struct CompileArgs {
     /// Each contract will get a subdirectory here: <solc_output_dir>/<contract_filename_base>/
     #[arg(long, value_name = "DIR", default_value = "b1")]
     pub solc_output_dir: PathBuf,
+
+    /// Timeout in seconds for solc compilation per contract
+    #[arg(long, value_name = "SECONDS", default_value_t = 30)]
+    pub solc_timeout_seconds: u64,
 }
 
 #[derive(Parser, Debug)]

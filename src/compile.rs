@@ -111,12 +111,18 @@ pub fn handle_compile_command(args: CompileArgs) -> Result<()> {
         ];
 
         println!("  Compiling with: solc {}", solc_args.join(" "));
-        let solc_status = Command::new("solc")
+        let mut command = Command::new("timeout");
+        command
+            .arg(format!("{}s", args.solc_timeout_seconds))
+            .arg("solc")
             .args(solc_args)
             .stdout(Stdio::piped())
-            .stderr(Stdio::piped())
+            .stderr(Stdio::piped());
+
+        println!("  Running with timeout: {:?}", command);
+        let solc_status = command
             .status() // Use status() for simple success/failure, or output() to capture
-            .wrap_err("Failed to execute solc. Is it installed and in PATH?")?;
+            .wrap_err("Failed to execute solc with timeout. Is timeout and solc installed and in PATH?")?;
 
         if !solc_status.success() {
             eprintln!(

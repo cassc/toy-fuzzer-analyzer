@@ -1,16 +1,15 @@
-use clap::{Parser, Subcommand};
+use clap::Parser;
 use compile::handle_compile_command;
 use csv::{Reader, Writer}; // Added Reader
 use eyre::{Result, WrapErr, eyre};
 use glob::glob;
 use plotters::prelude::*;
 use regex::Regex;
-use serde::{Deserialize, Serialize};
 use std::collections::{BTreeMap, HashMap};
 use std::fs::{self};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
-use types::{Cli, Commands, CompileArgs, PlotArgs, RunArgs}; // Added Deserialize
+use types::{Cli, Commands, PlotArgs, RunArgs}; // Added Deserialize
 
 mod compile;
 mod types;

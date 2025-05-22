@@ -1,14 +1,7 @@
 use clap::{Parser, Subcommand};
-use csv::{Reader, Writer}; // Added Reader
-use eyre::{Result, WrapErr, eyre};
-use glob::glob;
-use plotters::prelude::*;
-use regex::Regex;
+ // Added Reader
 use serde::{Deserialize, Serialize}; // Added Deserialize
-use std::collections::{BTreeMap, HashMap};
-use std::fs::{self};
-use std::path::{Path, PathBuf};
-use std::process::{Command, Stdio};
+use std::path::PathBuf;
 
 #[derive(Parser, Debug)]
 pub struct CompileArgs {

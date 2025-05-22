@@ -123,8 +123,7 @@ pub fn handle_compile_command(args: CompileArgs) -> Result<()> {
                 "  ERROR: Solc compilation failed for {} with status: {}. Check solc output if any.",
                 sol_filename_base, solc_status
             );
-            // You might want to print captured stdout/stderr here if you used .output()
-            continue; // Skip filtering if compilation failed
+            continue;
         }
         println!("  Compilation successful for {}.", sol_filename_base);
 

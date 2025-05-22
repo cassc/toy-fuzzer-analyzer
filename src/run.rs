@@ -4,6 +4,7 @@ use crate::types::StatsEntry;
 use csv::Writer;
 use eyre::{Result, WrapErr, eyre};
 use glob::glob;
+use indicatif::{ProgressBar, ProgressStyle};
 use regex::Regex;
 use std::collections::HashMap;
 use std::fs::{self};
@@ -41,14 +42,27 @@ pub fn handle_run_command(args: RunArgs) -> Result<()> {
         ));
     }
 
-    println!("Found contract directories: {:?}", contract_dirs);
+    println!("Found {} contract directories", contract_dirs.len());
+
+    let pb = ProgressBar::new(contract_dirs.len() as u64);
+    pb.set_style(
+        ProgressStyle::with_template(
+            "{spinner:.green} [{elapsed_precise}] [{wide_bar:.cyan/blue}] {pos}/{len} ({eta})\n{msg}",
+        )
+        .unwrap()
+        .progress_chars("█▓▒░ "),
+    );
+    pb.set_message("Starting fuzzing...");
 
     for contract_dir_path in contract_dirs {
+        pb.inc(1);
         let contract_id = contract_dir_path
             .file_name()
             .ok_or_else(|| eyre!("Could not get file name from path: {:?}", contract_dir_path))?
             .to_string_lossy()
             .into_owned();
+        
+        pb.set_message(format!("Fuzzing contract: {}", contract_id));
 
         let contract_files_glob = format!("{}/*", contract_dir_path.to_string_lossy());
         let options = ["-t", &contract_files_glob];
@@ -116,10 +130,10 @@ pub fn handle_run_command(args: RunArgs) -> Result<()> {
         aggregate_and_plot_data(&all_contract_stats, &args.output_dir)?;
     }
 
-    println!(
+    pb.finish_with_message(format!(
         "Run command complete. Outputs are in the '{}' directory.",
         args.output_dir.display()
-    );
+    ));
     Ok(())
 }
 

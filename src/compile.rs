@@ -7,17 +7,17 @@ use std::{
 use crate::types::CompileArgs;
 use eyre::{Context, Result, eyre};
 use indicatif::{ProgressBar, ProgressStyle};
-use tracing::debug;
+use tracing::info;
 
 pub fn handle_compile_command(args: CompileArgs) -> Result<()> {
-    debug!("Starting contract compilation and filtering process...");
-    debug!("Reading contract list from: {}", args.list_file.display());
+    info!("Starting contract compilation and filtering process...");
+    info!("Reading contract list from: {}", args.list_file.display());
     let mut failed_contracts = Vec::new();
-    debug!(
+    info!(
         "Solidity source directory: {}",
         args.solc_input_dir.display()
     );
-    debug!(
+    info!(
         "Base output directory for compiled files: {}",
         args.solc_output_dir.display()
     );
@@ -75,7 +75,7 @@ pub fn handle_compile_command(args: CompileArgs) -> Result<()> {
 
         let parts: Vec<&str> = line_trimmed.split(',').map(|s| s.trim()).collect();
         if parts.len() != 2 || parts[0].is_empty() || parts[1].is_empty() {
-            debug!(
+            info!(
                 "Warning: Skipping malformed line {} in {}: '{}'",
                 line_number + 1,
                 args.list_file.display(),
@@ -91,7 +91,7 @@ pub fn handle_compile_command(args: CompileArgs) -> Result<()> {
             .solc_input_dir
             .join(format!("{}.sol", sol_filename_base));
         if !sol_file_path.exists() {
-            debug!(
+            info!(
                 "Warning: Solidity file {} not found for entry '{}'. Skipping.",
                 sol_file_path.display(),
                 line
@@ -129,17 +129,17 @@ pub fn handle_compile_command(args: CompileArgs) -> Result<()> {
             specific_output_dir_str.as_ref(),
         ];
 
-        debug!("  Compiling with: solc {}", solc_args.join(" "));
+        info!("  Compiling with: solc {}", solc_args.join(" "));
         let solc_binary = args.solc_binary.as_deref().unwrap_or("solc".as_ref());
         let mut command = Command::new("timeout");
         command
             .arg(format!("{}s", args.solc_timeout_seconds))
             .arg(solc_binary)
             .args(solc_args)
-            .stdout(Stdio::inherit()) // Use piped might block the thread if we don't process the output
-            .stderr(Stdio::inherit());
+            .stdout(Stdio::null()) // Use piped might block the thread if we don't process the output
+            .stderr(Stdio::null());
 
-        debug!("  Running with timeout: {:?}", command);
+        info!("  Running with timeout: {:?}", command);
         let solc_status = command
             .status() // Use status() for simple success/failure, or output() to capture
             .wrap_err_with(|| {
@@ -162,19 +162,19 @@ pub fn handle_compile_command(args: CompileArgs) -> Result<()> {
                 abi_path.exists() && bin_path.exists() && bin_runtime_path.exists();
 
             if !compilation_success {
-                debug!("  ERROR: Output files missing for {}", sol_filename_base);
+                info!("  ERROR: Output files missing for {}", sol_filename_base);
             }
         }
 
         if !compilation_success {
-            debug!(
+            info!(
                 "  ERROR: Solc compilation failed for {} with status: {}",
                 sol_filename_base, solc_status
             );
             failed_contracts.push(sol_filename_base.to_string());
             continue;
         }
-        debug!("  Compilation successful for {}.", sol_filename_base);
+        info!("  Compilation successful for {}.", sol_filename_base);
 
         let entries = fs::read_dir(&specific_output_dir).wrap_err_with(|| {
             format!(
@@ -194,10 +194,10 @@ pub fn handle_compile_command(args: CompileArgs) -> Result<()> {
                 let file_prefix_to_keep = format!("{}.", main_contract_name);
 
                 if filename_str.starts_with(&file_prefix_to_keep) {
-                    debug!("    Keeping: {}", filename_str);
+                    info!("    Keeping: {}", filename_str);
                     kept_count += 1;
                 } else {
-                    debug!("    Removing: {}", filename_str);
+                    info!("    Removing: {}", filename_str);
                     fs::remove_file(&file_path).wrap_err_with(|| {
                         format!("Failed to remove file: {}", file_path.display())
                     })?;
@@ -205,7 +205,7 @@ pub fn handle_compile_command(args: CompileArgs) -> Result<()> {
                 }
             }
         }
-        debug!(
+        info!(
             "  Cleanup complete for {}. Kept {} files, removed {} files.",
             specific_output_dir.display(),
             kept_count,
@@ -213,15 +213,15 @@ pub fn handle_compile_command(args: CompileArgs) -> Result<()> {
         );
     }
 
-    debug!("\nAll contract processing finished.");
+    info!("\nAll contract processing finished.");
 
     if !failed_contracts.is_empty() {
-        debug!("\nFailed to compile {} contracts:", failed_contracts.len());
+        info!("\nFailed to compile {} contracts:", failed_contracts.len());
         for contract in failed_contracts {
-            debug!("  - {}", contract);
+            info!("  - {}", contract);
         }
     } else {
-        debug!("\nAll contracts compiled successfully.");
+        info!("\nAll contracts compiled successfully.");
     }
 
     Ok(())

@@ -10,7 +10,7 @@ use std::collections::HashMap;
 use std::fs::{self};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
-use tracing::debug;
+use tracing::info;
 
 pub fn handle_run_command(args: RunArgs) -> Result<()> {
     fs::create_dir_all(&args.output_dir).wrap_err_with(|| {
@@ -43,7 +43,7 @@ pub fn handle_run_command(args: RunArgs) -> Result<()> {
         ));
     }
 
-    debug!("Found {} contract directories", contract_dirs.len());
+    info!("Found {} contract directories", contract_dirs.len());
 
     let pb = ProgressBar::new(contract_dirs.len() as u64);
     pb.set_style(
@@ -71,7 +71,7 @@ pub fn handle_run_command(args: RunArgs) -> Result<()> {
         match run_program_with_timeout(&args.fuzzer_path, &options[..], args.fuzz_timeout_seconds) {
             Ok(log_content) => {
                 if log_content.trim().is_empty() {
-                    debug!(
+                    info!(
                         "No output from fuzzer for {}, skipping parsing (likely timeout or crash before output).",
                         contract_id
                     );
@@ -82,25 +82,25 @@ pub fn handle_run_command(args: RunArgs) -> Result<()> {
                         if entries.is_empty() {
                             if !log_content.trim().is_empty() {
                                 // Only print if log was not empty
-                                debug!(
+                                info!(
                                     "No statistical entries parsed for {}, though log was not empty. Log (first 100 chars): '{}'",
                                     contract_id,
                                     log_content.chars().take(100).collect::<String>()
                                 );
                             } else {
-                                debug!(
+                                info!(
                                     "No statistical entries parsed for {} (empty log).",
                                     contract_id
                                 );
                             }
                         } else {
-                            debug!(
+                            info!(
                                 "Parsed {} entries for contract {}",
                                 entries.len(),
                                 contract_id
                             );
                             write_csv(&contract_id, &entries, &args.output_dir)?;
-                            debug!(
+                            info!(
                                 "CSV saved for {} to {}/{}.instructions.stats.csv",
                                 contract_id,
                                 args.output_dir.display(),
@@ -110,7 +110,7 @@ pub fn handle_run_command(args: RunArgs) -> Result<()> {
                         }
                     }
                     Err(e) => {
-                        debug!(
+                        info!(
                             "Error parsing log for contract {}: {:?}\nLog content (first 200 chars):\n{}",
                             contract_id,
                             e,
@@ -120,13 +120,13 @@ pub fn handle_run_command(args: RunArgs) -> Result<()> {
                 }
             }
             Err(e) => {
-                debug!("Error running fuzzer for contract {}: {:?}", contract_id, e);
+                info!("Error running fuzzer for contract {}: {:?}", contract_id, e);
             }
         }
     }
 
     if all_contract_stats.is_empty() {
-        debug!("No data collected from any contracts. Cannot generate aggregate plot.");
+        info!("No data collected from any contracts. Cannot generate aggregate plot.");
     } else {
         aggregate_and_plot_data(&all_contract_stats, &args.output_dir)?;
     }
@@ -143,7 +143,7 @@ fn run_program_with_timeout(
     args: &[&str],
     timeout_seconds: u64,
 ) -> Result<String> {
-    debug!(
+    info!(
         "Running program {} with args {:?} and timeout {}s",
         program_path.display(),
         args,
@@ -180,17 +180,17 @@ fn run_program_with_timeout(
 
     if !output.status.success() {
         if !stderr_str.is_empty() {
-            debug!(
+            info!(
                 "Stderr from running {}:\n{}",
                 program_path.display(),
                 stderr_str.trim()
             );
         }
         if output.status.code() == Some(124) {
-            debug!("Program {} timed out.", program_path.display());
+            info!("Program {} timed out.", program_path.display());
             // For timeout, we still want to process any stdout produced, so we don't return Err here.
         } else {
-            debug!(
+            info!(
                 "Program {} (or timeout command) exited with status {}.",
                 program_path.display(),
                 output.status
@@ -255,7 +255,7 @@ fn parse_log(log_content: &str, contract_id: &str) -> Result<Vec<StatsEntry>> {
                 contract_id
             ));
         } else if !log_content.trim().is_empty() {
-            debug!(
+            info!(
                 "Warning: No 'Began at' timestamp found in log for {}, and no stat lines. Log: '{}'",
                 contract_id,
                 log_content.chars().take(100).collect::<String>()

@@ -3,9 +3,9 @@ use compile::handle_compile_command;
 use eyre::Result;
 use plot::handle_plot_command;
 use run::handle_run_command;
-use std::{env, fs::File};
+use std::env;
 use tracing::{Level, info};
-use tracing_subscriber::{EnvFilter, FmtSubscriber, fmt, prelude::*};
+use tracing_subscriber::{FmtSubscriber, prelude::*};
 use types::{Cli, Commands};
 
 mod compile;
@@ -15,7 +15,6 @@ mod types;
 
 fn main() -> Result<()> {
     // Create log file
-    let log_file = File::create("fuzzer_analyzer.log")?;
     let log_level = match env::var("LOG_LEVEL").unwrap_or_default().as_str() {
         "trace" => Level::TRACE,
         "debug" => Level::DEBUG,
@@ -37,13 +36,6 @@ fn main() -> Result<()> {
 
     tracing::subscriber::set_global_default(subscriber)
         .expect("Setting default tracing subscriber failed");
-
-    let file_layer = fmt::layer()
-        .with_writer(log_file)
-        .with_ansi(false)
-        .with_filter(EnvFilter::from_default_env());
-
-    tracing_subscriber::registry().with(file_layer).init();
 
     let cli = Cli::parse();
 

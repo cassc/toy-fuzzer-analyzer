@@ -1,5 +1,5 @@
 use clap::{Parser, Subcommand};
- // Added Reader
+// Added Reader
 use serde::{Deserialize, Serialize}; // Added Deserialize
 use std::path::PathBuf;
 
@@ -50,8 +50,12 @@ pub enum Commands {
 #[derive(Parser, Debug)]
 pub struct RunArgs {
     /// Path to the fuzzer executable
-    #[arg(short, long, value_name = "FILE", default_value = "./mau-ityfuzz")]
-    pub fuzzer_path: PathBuf,
+    #[arg(short, long, value_name = "FILE")]
+    pub fuzzer_path: String,
+
+    /// Additional arguments to be added after the fuzzer_path
+    #[arg(long)]
+    pub fuzzer_options: Vec<String>,
 
     /// Base directory containing benchmark contract directories (e.g., b1)
     #[arg(short, long, value_name = "DIR")]

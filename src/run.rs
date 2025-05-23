@@ -66,7 +66,12 @@ pub fn handle_run_command(args: RunArgs) -> Result<()> {
         pb.set_message(format!("Fuzzing contract: {}", contract_id));
 
         let contract_files_glob = format!("{}/*", contract_dir_path.to_string_lossy());
-        let options = ["-t", &contract_files_glob];
+        let mut options = vec![];
+        for option in args.fuzzer_options.iter() {
+            options.push(option.as_str());
+        }
+
+        options.append(&mut vec!["-t", &contract_files_glob]);
 
         match run_program_with_timeout(&args.fuzzer_path, &options[..], args.fuzz_timeout_seconds) {
             Ok(log_content) => {
@@ -139,40 +144,24 @@ pub fn handle_run_command(args: RunArgs) -> Result<()> {
 }
 
 fn run_program_with_timeout(
-    program_path: &Path,
+    program_path: &str,
     args: &[&str],
     timeout_seconds: u64,
 ) -> Result<String> {
     info!(
         "Running program {} with args {:?} and timeout {}s",
-        program_path.display(),
-        args,
-        timeout_seconds
+        program_path, args, timeout_seconds
     );
-
-    let absolute_path = fs::canonicalize(program_path).wrap_err_with(|| {
-        format!(
-            "Program executable not found or path invalid: {}",
-            program_path.display()
-        )
-    })?;
-
-    let program_path_str = absolute_path.to_str().ok_or_else(|| {
-        eyre!(
-            "Program path is not valid UTF-8: {}",
-            absolute_path.display()
-        )
-    })?;
 
     let timeout_str = timeout_seconds.to_string();
 
     let child = Command::new("timeout")
-        .args([&timeout_str, program_path_str])
+        .args([&timeout_str, program_path])
         .args(args)
         .stdout(Stdio::piped())
         .stderr(Stdio::piped()) // Capture stderr
         .spawn()
-        .wrap_err_with(|| format!("Failed to start program {}", program_path.display()))?;
+        .wrap_err_with(|| format!("Failed to start program {}", program_path))?;
 
     let output = child.wait_with_output()?;
     let stdout_str = String::from_utf8_lossy(&output.stdout).to_string();
@@ -182,18 +171,17 @@ fn run_program_with_timeout(
         if !stderr_str.is_empty() {
             info!(
                 "Stderr from running {}:\n{}",
-                program_path.display(),
+                program_path,
                 stderr_str.trim()
             );
         }
         if output.status.code() == Some(124) {
-            info!("Program {} timed out.", program_path.display());
+            info!("Program {} timed out.", program_path);
             // For timeout, we still want to process any stdout produced, so we don't return Err here.
         } else {
             info!(
                 "Program {} (or timeout command) exited with status {}.",
-                program_path.display(),
-                output.status
+                program_path, output.status
             );
             // Depending on strictness, one might return an Err here.
             // For now, we allow processing of stdout even if the process failed non-timeout.

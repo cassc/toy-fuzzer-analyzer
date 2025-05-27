@@ -2,7 +2,6 @@ use crate::plot::aggregate_and_plot_data;
 use crate::types::RunArgs;
 use crate::types::StatsEntry;
 use csv::Writer;
-use eyre::bail;
 use eyre::{Result, WrapErr, eyre};
 use glob::glob;
 use indicatif::{ProgressBar, ProgressStyle};
@@ -85,13 +84,10 @@ pub fn handle_run_command(args: RunArgs) -> Result<()> {
                 }
                 _ => {
                     error!(
-                        "PTX file not found for contract {} at {}",
-                        contract_id, ptx_path_str
-                    );
-                    bail!(
-                        "PTX file not found for contract {} at {}",
+                        "PTX file not found for contract {} at {}, skipping contract at {}",
                         contract_id,
-                        ptx_path_str
+                        ptx_path_str,
+                        contract_dir_path.display()
                     );
                 }
             }

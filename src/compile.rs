@@ -7,7 +7,7 @@ use std::{
 use crate::types::CompileArgs;
 use eyre::{Context, Result, eyre};
 use indicatif::{ProgressBar, ProgressStyle};
-use tracing::info;
+use tracing::{error, info};
 
 pub fn handle_compile_command(args: CompileArgs) -> Result<()> {
     info!("Starting contract compilation and filtering process...");
@@ -197,7 +197,7 @@ pub fn handle_compile_command(args: CompileArgs) -> Result<()> {
                 .wrap_err("Failed to run ptxsema")?;
 
             if !status.success() {
-                info!("  ptxsema failed for {}", sol_filename_base);
+                error!("  ptxsema failed for {}", sol_filename_base);
                 continue;
             }
 
@@ -211,7 +211,8 @@ pub fn handle_compile_command(args: CompileArgs) -> Result<()> {
                 .wrap_err("Failed to run llvm-link")?;
 
             if !status.success() {
-                info!("  llvm-link failed for {}", sol_filename_base);
+                error!("  llvm-link failed for {}", sol_filename_base);
+                failed_contracts.push(sol_filename_base.to_string());
                 continue;
             }
 
@@ -224,7 +225,8 @@ pub fn handle_compile_command(args: CompileArgs) -> Result<()> {
                 .wrap_err("Failed to run llvm-dis")?;
 
             if !status.success() {
-                info!("  llvm-dis failed for {}", sol_filename_base);
+                error!("  llvm-dis failed for {}", sol_filename_base);
+                failed_contracts.push(sol_filename_base.to_string());
                 continue;
             }
 
@@ -238,7 +240,8 @@ pub fn handle_compile_command(args: CompileArgs) -> Result<()> {
                 .wrap_err("Failed to run llc-16")?;
 
             if !status.success() {
-                info!("  llc-16 failed for {}", sol_filename_base);
+                error!("  llc-16 failed for {}", sol_filename_base);
+                failed_contracts.push(sol_filename_base.to_string());
                 continue;
             }
 

@@ -12,7 +12,7 @@ cargo install --path . --profile release --force --locked
 # Compile and prepapre the B1 contracts
 fuzzer_analyzer compile --solc-input-dir ./release/benchmarks/B1/sol/ \
   --solc-output-dir b1 \
-  --generate-ptx \
+  --generate-ptx \ # for generating ptx files. Need to run inside the mau-ityfuzz docker container
   --list-file ./release/benchmarks/assets/B1.list
 
 # Compile and prepapre the B3 contracts
@@ -25,6 +25,7 @@ fuzzer_analyzer run \
     --fuzzer-path ./mau-ityfuzz \
     --benchmark-base-dir b1 \
     --output-dir ./b1-results \
+    --use-ptx \
     --fuzz-timeout-seconds 10
 
 fuzzer_analyzer run \

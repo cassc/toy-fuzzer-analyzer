@@ -2,6 +2,7 @@ use crate::plot::aggregate_and_plot_data;
 use crate::types::RunArgs;
 use crate::types::StatsEntry;
 use csv::Writer;
+use eyre::bail;
 use eyre::{Result, WrapErr, eyre};
 use glob::glob;
 use indicatif::{ProgressBar, ProgressStyle};
@@ -10,6 +11,7 @@ use std::collections::HashMap;
 use std::fs::{self};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
+use tracing::error;
 use tracing::info;
 
 pub fn handle_run_command(args: RunArgs) -> Result<()> {
@@ -69,6 +71,30 @@ pub fn handle_run_command(args: RunArgs) -> Result<()> {
         let mut options = vec![];
         for option in args.fuzzer_options.iter() {
             options.push(option.as_str());
+        }
+
+        let ptx_path = contract_dir_path.join("kernel.ptx");
+        let ptx_path_str = ptx_path.to_string_lossy().to_string();
+        if args.use_ptx {
+            match ptx_path.try_exists() {
+                Ok(true) => {
+                    options.push("--ptx-path");
+                    options.push(&ptx_path_str);
+                    options.push("--gpu-dev");
+                    options.push("0");
+                }
+                _ => {
+                    error!(
+                        "PTX file not found for contract {} at {}",
+                        contract_id, ptx_path_str
+                    );
+                    bail!(
+                        "PTX file not found for contract {} at {}",
+                        contract_id,
+                        ptx_path_str
+                    );
+                }
+            }
         }
 
         options.append(&mut vec!["-t", &contract_files_glob]);

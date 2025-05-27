@@ -72,6 +72,10 @@ pub struct RunArgs {
     /// Timeout in seconds for running the fuzzer on each contract
     #[arg(long, value_name = "SECONDS", default_value_t = 15)]
     pub fuzz_timeout_seconds: u64,
+
+    /// Whether to use PTX files for GPU execution (requires pre-compiled kernel.ptx files in the output directory)
+    #[arg(long)]
+    pub use_ptx: bool,
 }
 
 #[derive(Parser, Debug)]

@@ -29,6 +29,10 @@ pub struct CompileArgs {
     /// Path to solc binary (defaults to 'solc' in PATH)
     #[arg(long, value_name = "PATH")]
     pub solc_binary: Option<PathBuf>,
+
+    /// Generate PTX files for GPU execution (requires ptxsema, llvm tools)
+    #[arg(long)]
+    pub generate_ptx: bool,
 }
 
 #[derive(Parser, Debug)]

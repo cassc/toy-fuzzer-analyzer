@@ -176,6 +176,75 @@ pub fn handle_compile_command(args: CompileArgs) -> Result<()> {
         }
         info!("  Compilation successful for {}.", sol_filename_base);
 
+        // Generate PTX files if enabled
+        if args.generate_ptx {
+            info!("  Generating PTX files for {}...", sol_filename_base);
+            
+            let bin_path = specific_output_dir.join(format!("{}.bin", main_contract_name));
+            let bytecode_ll = specific_output_dir.join("bytecode.ll");
+            let kernel_bc = specific_output_dir.join("kernel.bc");
+            let kernel_ll = specific_output_dir.join("kernel.ll");
+            let kernel_ptx = specific_output_dir.join("kernel.ptx");
+
+            // Step 1: Generate bytecode.ll
+            let status = Command::new("ptxsema")
+                .arg(bin_path)
+                .arg("-o")
+                .arg(&bytecode_ll)
+                .arg("--hex")
+                .arg("--dump")
+                .status()
+                .wrap_err("Failed to run ptxsema")?;
+            
+            if !status.success() {
+                info!("  ptxsema failed for {}", sol_filename_base);
+                continue;
+            }
+
+            // Step 2: Link with runtime
+            let status = Command::new("llvm-link")
+                .arg("rt.o.bc")
+                .arg(&bytecode_ll)
+                .arg("-o")
+                .arg(&kernel_bc)
+                .status()
+                .wrap_err("Failed to run llvm-link")?;
+            
+            if !status.success() {
+                info!("  llvm-link failed for {}", sol_filename_base);
+                continue;
+            }
+
+            // Step 3: Disassemble to human-readable LLVM IR
+            let status = Command::new("llvm-dis")
+                .arg(&kernel_bc)
+                .arg("-o")
+                .arg(&kernel_ll)
+                .status()
+                .wrap_err("Failed to run llvm-dis")?;
+            
+            if !status.success() {
+                info!("  llvm-dis failed for {}", sol_filename_base);
+                continue;
+            }
+
+            // Step 4: Generate PTX
+            let status = Command::new("llc-16")
+                .arg("-mcpu=sm_86")
+                .arg(&kernel_bc)
+                .arg("-o")
+                .arg(&kernel_ptx)
+                .status()
+                .wrap_err("Failed to run llc-16")?;
+            
+            if !status.success() {
+                info!("  llc-16 failed for {}", sol_filename_base);
+                continue;
+            }
+
+            info!("  PTX generation complete for {}", sol_filename_base);
+        }
+
         let entries = fs::read_dir(&specific_output_dir).wrap_err_with(|| {
             format!(
                 "Failed to read output directory: {}",

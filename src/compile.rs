@@ -179,7 +179,7 @@ pub fn handle_compile_command(args: CompileArgs) -> Result<()> {
         // Generate PTX files if enabled
         if args.generate_ptx {
             info!("  Generating PTX files for {}...", sol_filename_base);
-            
+
             let bin_path = specific_output_dir.join(format!("{}.bin", main_contract_name));
             let bytecode_ll = specific_output_dir.join("bytecode.ll");
             let kernel_bc = specific_output_dir.join("kernel.bc");
@@ -195,7 +195,7 @@ pub fn handle_compile_command(args: CompileArgs) -> Result<()> {
                 .arg("--dump")
                 .status()
                 .wrap_err("Failed to run ptxsema")?;
-            
+
             if !status.success() {
                 info!("  ptxsema failed for {}", sol_filename_base);
                 continue;
@@ -209,7 +209,7 @@ pub fn handle_compile_command(args: CompileArgs) -> Result<()> {
                 .arg(&kernel_bc)
                 .status()
                 .wrap_err("Failed to run llvm-link")?;
-            
+
             if !status.success() {
                 info!("  llvm-link failed for {}", sol_filename_base);
                 continue;
@@ -222,7 +222,7 @@ pub fn handle_compile_command(args: CompileArgs) -> Result<()> {
                 .arg(&kernel_ll)
                 .status()
                 .wrap_err("Failed to run llvm-dis")?;
-            
+
             if !status.success() {
                 info!("  llvm-dis failed for {}", sol_filename_base);
                 continue;
@@ -236,7 +236,7 @@ pub fn handle_compile_command(args: CompileArgs) -> Result<()> {
                 .arg(&kernel_ptx)
                 .status()
                 .wrap_err("Failed to run llc-16")?;
-            
+
             if !status.success() {
                 info!("  llc-16 failed for {}", sol_filename_base);
                 continue;
@@ -262,7 +262,8 @@ pub fn handle_compile_command(args: CompileArgs) -> Result<()> {
                 let filename_str = filename_osstr.to_string_lossy();
                 let file_prefix_to_keep = format!("{}.", main_contract_name);
 
-                if filename_str.starts_with(&file_prefix_to_keep) {
+                if filename_str.starts_with(&file_prefix_to_keep) || filename_str.ends_with(".ptx")
+                {
                     info!("    Keeping: {}", filename_str);
                     kept_count += 1;
                 } else {

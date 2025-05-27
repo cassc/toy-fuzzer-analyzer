@@ -10,10 +10,13 @@ cargo install --path . --profile release --force --locked
 # Select or install solc version 0.4.25
 
 # Compile and prepapre the B1 contracts
-fuzzer_analyzer compile --solc-input-dir ../mau-ityfuzz/release/benchmarks/B1/sol/ --solc-output-dir b1 --list-file ../mau-ityfuzz/release/benchmarks/assets/B1.list
+fuzzer_analyzer compile --solc-input-dir ./release/benchmarks/B1/sol/ \
+  --solc-output-dir b1 \
+  --generate-ptx \
+  --list-file ./release/benchmarks/assets/B1.list
 
 # Compile and prepapre the B3 contracts
-fuzzer_analyzer compile --solc-input-dir ../mau-ityfuzz/release/benchmarks/B3/sol/ --solc-output-dir ~/tmp/b3-processed --list-file ../mau-ityfuzz/release/benchmarks/assets/B3.list --solc-timeout-seconds 10 --solc-binary ~/.solcx/solc-v0.4.25
+fuzzer_analyzer compile --solc-input-dir ./release/benchmarks/B3/sol/ --solc-output-dir ~/tmp/b3-processed --list-file ./release/benchmarks/assets/B3.list --solc-timeout-seconds 10 --solc-binary ~/.solcx/solc-v0.4.25
 
 
 

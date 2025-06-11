@@ -62,8 +62,8 @@ pub fn aggregate_and_plot_data(
 
     let plot_data: Vec<(f64, f64)> = aggregated_instructions_over_time
         .into_iter()
-        .map(|(time_ns, instr_count)| {
-            let time_seconds = time_ns as f64 / 1_000_000_000.0;
+        .map(|(time_ms, instr_count)| {
+            let time_seconds = time_ms as f64 / 1_000.0;
             let instructions_k = instr_count as f64 / 1000.0;
             (time_seconds, instructions_k)
         })

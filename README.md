@@ -1,5 +1,7 @@
 # Usage
 
+## Test MAU
+
 ``` bash
 # Only when using older Ubuntu
 # sudo apt install libfontconfig1-dev -y
@@ -8,6 +10,11 @@
 cargo install --path crates/mau-analyzer/ --profile release --force --locked
 
 # Select or install solc version 0.4.25
+
+# Or use docker image
+git clone https://github.com/cassc/mau-ityfuzz
+cd mau-ityfuzz
+docker run --gpus all --name mau-ityfuzz-0611  -it -w /app -v $(pwd):/app augustus/mau-ityfuzz:20250529 /bin/bash
 
 # Compile the B1 contracts
 mau-analyzer compile --solc-input-dir ./release/benchmarks/B1/sol/ \
@@ -67,4 +74,12 @@ mau-analyzer run \
 
 # Plot the results
 mau-analyzer plot --output-dir ./results
+```
+
+
+## Test ityfuzz
+
+
+``` bash
+ityfuzz-analyzer run -f ityfuzz -b b1 -o ityfuzz-output/timeout-30 --fuzz-timeout-seconds 30
 ```

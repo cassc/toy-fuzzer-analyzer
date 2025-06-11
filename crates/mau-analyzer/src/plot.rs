@@ -74,6 +74,24 @@ pub fn aggregate_and_plot_data(
         return Ok(());
     }
 
+    // store the overall csv stats
+    let overall_stats_csv_path = plot_output_dir.join("overall_instructions_stats.csv");
+    let mut wtr = csv::Writer::from_path(&overall_stats_csv_path).wrap_err_with(|| {
+        format!(
+            "Failed to create CSV writer for {}",
+            overall_stats_csv_path.display()
+        )
+    })?;
+    wtr.write_record(["time_seconds", "instructions(k)"])
+        .wrap_err("Failed to write CSV header")?;
+
+    for (time_seconds, instructions_k) in &plot_data {
+        wtr.write_record([time_seconds.to_string(), instructions_k.to_string()])
+            .wrap_err("Failed to write CSV record")?;
+    }
+
+    wtr.flush().wrap_err("Failed to flush CSV writer")?;
+
     let plot_path = plot_output_dir.join("overall_instructions_plot.png");
 
     let root_area = BitMapBackend::new(&plot_path, (1024, 768)).into_drawing_area();

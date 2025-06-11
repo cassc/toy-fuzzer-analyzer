@@ -23,7 +23,13 @@ fn main() -> Result<()> {
         _ => Level::INFO,
     };
 
-    let file_appender = tracing_appender::rolling::never("/tmp/logs", "fuzzer_analyzer.log");
+    let file_appender = tracing_appender::rolling::never(
+        "/tmp/logs",
+        format!(
+            "mau-analyzer-{}.log",
+            chrono::Local::now().format("%Y-%m-%d")
+        ),
+    );
     let (non_blocking_appender, _guard) = tracing_appender::non_blocking(file_appender);
 
     let subscriber = FmtSubscriber::builder()

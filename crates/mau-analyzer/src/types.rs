@@ -1,6 +1,5 @@
 use clap::{Parser, Subcommand};
-// Added Reader
-use serde::{Deserialize, Serialize}; // Added Deserialize
+use serde::{Deserialize, Serialize};
 use std::path::PathBuf;
 
 #[derive(Parser, Debug)]
@@ -85,7 +84,7 @@ pub struct PlotArgs {
     pub output_dir: PathBuf,
 }
 
-#[derive(Debug, Serialize, Deserialize)] // Added Deserialize
+#[derive(Debug, Serialize, Deserialize)]
 pub struct StatsEntry {
     pub instructions_covered: u64,
     pub branches_covered: u64,

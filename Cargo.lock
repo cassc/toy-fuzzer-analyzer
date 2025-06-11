@@ -465,25 +465,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "fuzzer_analyzer"
-version = "0.1.0"
-dependencies = [
- "chrono",
- "clap",
- "csv",
- "eyre",
- "glob",
- "indicatif",
- "plotters",
- "regex",
- "serde",
- "subprocess",
- "tracing",
- "tracing-appender",
- "tracing-subscriber",
-]
-
-[[package]]
 name = "getrandom"
 version = "0.2.16"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -586,6 +567,25 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "4a5f13b858c8d314ee3e8f639011f7ccefe71f97f96e50151fb991f267928e2c"
 
 [[package]]
+name = "ityfuzz-analyzer"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "clap",
+ "csv",
+ "eyre",
+ "glob",
+ "indicatif",
+ "plotters",
+ "regex",
+ "serde",
+ "subprocess",
+ "tracing",
+ "tracing-appender",
+ "tracing-subscriber",
+]
+
+[[package]]
 name = "jpeg-decoder"
 version = "0.3.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -646,6 +646,25 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "8263075bb86c5a1b1427b5ae862e8889656f126e9f77c484496e8b47cf5c5558"
 dependencies = [
  "regex-automata 0.1.10",
+]
+
+[[package]]
+name = "mau-analyzer"
+version = "0.1.0"
+dependencies = [
+ "chrono",
+ "clap",
+ "csv",
+ "eyre",
+ "glob",
+ "indicatif",
+ "plotters",
+ "regex",
+ "serde",
+ "subprocess",
+ "tracing",
+ "tracing-appender",
+ "tracing-subscriber",
 ]
 
 [[package]]

@@ -1,27 +1,34 @@
 # Usage
 
+## Test MAU
+
 ``` bash
 # Only when using older Ubuntu
 # sudo apt install libfontconfig1-dev -y
 
 # Install binary
-cargo install --path . --profile release --force --locked
+cargo install --path crates/mau-analyzer/ --profile release --force --locked
 
 # Select or install solc version 0.4.25
 
+# Or use docker image
+git clone https://github.com/cassc/mau-ityfuzz
+cd mau-ityfuzz
+docker run --gpus all --name mau-ityfuzz-0611  -it -w /app -v $(pwd):/app augustus/mau-ityfuzz:20250529 /bin/bash
+
 # Compile the B1 contracts
-fuzzer_analyzer compile --solc-input-dir ./release/benchmarks/B1/sol/ \
+mau-analyzer compile --solc-input-dir ./release/benchmarks/B1/sol/ \
   --solc-output-dir b1 \
   --list-file ./release/benchmarks/assets/B1.list
 
 # Compile and generate ptx files for the B1 contracts (require running in the mau-ityfuzz docker container)
-fuzzer_analyzer compile --solc-input-dir ./release/benchmarks/B1/sol/ \
+mau-analyzer compile --solc-input-dir ./release/benchmarks/B1/sol/ \
   --solc-output-dir b1 \
   --generate-ptx \
   --list-file ./release/benchmarks/assets/B1.list
 
 # Compile and generate ptx files for the B3 contracts
-fuzzer_analyzer compile --solc-input-dir ./release/benchmarks/B3/sol/ \
+mau-analyzer compile --solc-input-dir ./release/benchmarks/B3/sol/ \
   --solc-output-dir b3 \
   --list-file ./release/benchmarks/assets/B3.list \
   --solc-timeout-seconds 10 \
@@ -32,14 +39,17 @@ fuzzer_analyzer compile --solc-input-dir ./release/benchmarks/B3/sol/ \
 export LD_LIBRARY_PATH=./runner/
 
 # Run b1 contracts in CPU
-fuzzer_analyzer run \
+mau-analyzer run \
     --fuzzer-path ./mau-ityfuzz \
     --benchmark-base-dir b1 \
     --output-dir ./b1-results \
     --fuzz-timeout-seconds 10
 
+> Detailed execution logs can be found in /tmp/logs/mau-analyzer.log
+
+
 # Run b1 contracts in GPU  (requires running in the mau-ityfuzz docker container)
-fuzzer_analyzer run \
+mau-analyzer run \
     --fuzzer-path ./mau-ityfuzz \
     --benchmark-base-dir b1 \
     --output-dir ./b1-ptx-results \
@@ -47,14 +57,14 @@ fuzzer_analyzer run \
     --fuzz-timeout-seconds 10
 
 # Run b3 contracts in CPU
-fuzzer_analyzer run \
+mau-analyzer run \
     --fuzzer-path ./mau-ityfuzz \
     --benchmark-base-dir b3 \
     --output-dir ./b3-results \
     --fuzz-timeout-seconds 10
 
 # Run b3 contracts in GPU
-fuzzer_analyzer run \
+mau-analyzer run \
     --fuzzer-path ./mau-ityfuzz \
     --benchmark-base-dir b3 \
     --use-ptx \
@@ -63,5 +73,13 @@ fuzzer_analyzer run \
 
 
 # Plot the results
-fuzzer_analyzer plot --output-dir ./results
+mau-analyzer plot --output-dir ./results
+```
+
+
+## Test ityfuzz
+
+
+``` bash
+ityfuzz-analyzer run -f ityfuzz -b b1 -o ityfuzz-output/timeout-30 --fuzz-timeout-seconds 30
 ```

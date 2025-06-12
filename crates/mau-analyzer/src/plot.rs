@@ -84,7 +84,8 @@ pub fn aggregate_and_plot_data(
     }
 
     // store the overall csv stats
-    let overall_stats_csv_path = plot_output_dir.join("overall_instructions_stats.csv");
+    let overall_stats_csv_path =
+        plot_output_dir.join(format!("{}_overall_instructions_stats.csv", title_prefix));
     let mut wtr = csv::Writer::from_path(&overall_stats_csv_path).wrap_err_with(|| {
         format!(
             "Failed to create CSV writer for {}",

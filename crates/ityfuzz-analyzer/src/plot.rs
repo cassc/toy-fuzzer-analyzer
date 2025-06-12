@@ -24,12 +24,21 @@ fn read_stats_from_csv(csv_path: &Path) -> Result<Vec<StatsEntry>> {
 
 pub fn aggregate_and_plot_data(
     all_contract_stats: &HashMap<String, Vec<StatsEntry>>,
-    plot_output_dir: &Path, // Renamed for clarity, this is where the plot is saved
+    plot_output_dir: &Path,
+    title_prefix: Option<String>,
 ) -> Result<()> {
     if all_contract_stats.is_empty() {
         info!("No data to plot.");
         return Ok(());
     }
+
+    let title_prefix = title_prefix.unwrap_or_else(|| {
+        plot_output_dir
+            .file_name()
+            .unwrap_or_default()
+            .to_string_lossy()
+            .to_string()
+    });
 
     let mut aggregated_instructions_over_time: BTreeMap<u64, u64> = BTreeMap::new();
     let mut all_timestamps: Vec<u64> = Vec::new();
@@ -74,7 +83,7 @@ pub fn aggregate_and_plot_data(
         return Ok(());
     }
 
-    let plot_path = plot_output_dir.join("overall_instructions_plot.png");
+    let plot_path = plot_output_dir.join(format!("{}_overall_instructions_plot.png", title_prefix));
 
     let root_area = BitMapBackend::new(&plot_path, (1024, 768)).into_drawing_area();
     root_area
@@ -93,7 +102,7 @@ pub fn aggregate_and_plot_data(
 
     let mut chart = ChartBuilder::on(&root_area)
         .caption(
-            "Overall Instructions Covered vs. Time",
+            format!("{} Overall Instructions Covered vs. Time", title_prefix),
             ("sans-serif", 30).into_font(),
         )
         .margin(10)
@@ -227,7 +236,7 @@ pub fn handle_plot_command(args: PlotArgs) -> Result<()> {
         )
     })?;
 
-    aggregate_and_plot_data(&all_contract_stats, &args.output_dir)?;
+    aggregate_and_plot_data(&all_contract_stats, &args.output_dir, None)?;
     info!(
         "Plot command complete. Plot is in the '{}' directory.",
         args.output_dir.display()

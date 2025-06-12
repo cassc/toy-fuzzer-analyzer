@@ -155,7 +155,7 @@ pub fn handle_run_command(args: RunArgs) -> Result<()> {
     if all_contract_stats.is_empty() {
         info!("No data collected from any contracts. Cannot generate aggregate plot.");
     } else {
-        aggregate_and_plot_data(&all_contract_stats, &args.output_dir)?;
+        aggregate_and_plot_data(&all_contract_stats, &args.output_dir, None)?;
     }
 
     pb.finish_with_message(format!(

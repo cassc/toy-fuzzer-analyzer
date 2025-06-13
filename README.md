@@ -1,5 +1,7 @@
 # Usage
 
+> Execution logs can be found in the `/tmp/logs/` folder.
+
 ## Test MAU
 
 ``` bash

@@ -129,7 +129,12 @@ pub fn aggregate_and_plot_data(
     } else {
         1.0
     };
-    let y_axis_max = if max_instr_k > 0.0 { max_instr_k } else { 1.0 };
+    // Add 10% padding above the total instructions line
+    let y_axis_max = if max_instr_k > 0.0 { 
+        f64::max(max_instr_k, total_instructions_k) * 1.1 
+    } else { 
+        1.0 
+    };
 
     let mut chart = ChartBuilder::on(&root_area)
         .caption(

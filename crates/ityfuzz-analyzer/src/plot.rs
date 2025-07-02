@@ -3,6 +3,7 @@ use csv::Reader; // Added Reader
 use eyre::{Result, WrapErr, eyre};
 use glob::glob;
 use plotters::prelude::*;
+use plotters::style::text_anchor::{Pos, HPos, VPos};
 use std::collections::{BTreeMap, HashMap};
 use std::fs::{self};
 use std::path::Path;
@@ -148,9 +149,26 @@ pub fn aggregate_and_plot_data(
         .draw()
         .wrap_err("Failed to draw chart mesh")?;
 
+    // Draw the coverage progress line
+    let coverage_line = chart
+        .draw_series(LineSeries::new(plot_data.clone(), &RED))
+        .wrap_err("Failed to draw data series on chart")?
+        .legend(move |(x,y)| PathElement::new(vec![(x, y), (x + 20, y)], &RED));
+
+    // Draw horizontal line for total instructions
+    let total_line = chart
+        .draw_series(LineSeries::new(
+            vec![(0.0, total_instructions_k), (x_axis_max, total_instructions_k)],
+            &BLUE.mix(0.5),
+        ))?
+        .legend(move |(x,y)| PathElement::new(vec![(x, y), (x + 20, y)], &BLUE.mix(0.5)));
+
+    // Configure the legend
     chart
-        .draw_series(LineSeries::new(plot_data, &RED))
-        .wrap_err("Failed to draw data series on chart")?;
+        .configure_series_labels()
+        .background_style(&WHITE.mix(0.8))
+        .border_style(&BLACK)
+        .draw()?;
 
     root_area.present().wrap_err("Failed to present chart")?;
     info!("Plot saved to {}", plot_path.display());

@@ -22,10 +22,10 @@ fn main() -> Result<()> {
     };
 
     let file_appender = tracing_appender::rolling::never(
-        "/tmp/logs",
+        ".",
         format!(
             "ityfuzz-analyzer-{}.log",
-            chrono::Local::now().format("%Y-%m-%d")
+            chrono::Local::now().format("%Y-%m-%d_%H-%M-%S")
         ),
     );
 

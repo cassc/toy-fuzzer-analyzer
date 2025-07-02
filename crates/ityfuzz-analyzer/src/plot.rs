@@ -130,10 +130,10 @@ pub fn aggregate_and_plot_data(
         1.0
     };
     // Add 10% padding above the total instructions line
-    let y_axis_max = if max_instr_k > 0.0 { 
-        f64::max(max_instr_k, total_instructions_k) * 1.1 
-    } else { 
-        1.0 
+    let y_axis_max = if max_instr_k > 0.0 {
+        f64::max(max_instr_k, total_instructions_k) * 1.1
+    } else {
+        1.0
     };
 
     let mut chart = ChartBuilder::on(&root_area)
@@ -162,9 +162,15 @@ pub fn aggregate_and_plot_data(
 
     // Draw horizontal line for total instructions
     let total_line = chart
-        .draw_series(LineSeries::new(
+        .draw_series(DashedLineSeries::new(
             vec![(0.0, total_instructions_k), (x_axis_max, total_instructions_k)],
-            &BLUE.mix(0.5),
+            5,
+            10,
+            ShapeStyle {
+                color: BLACK.mix(1.0),
+                filled: false,
+                stroke_width: 1,
+            },
         ))?
         .legend(move |(x,y)| PathElement::new(vec![(x, y), (x + 20, y)], &BLUE.mix(0.5)));
 

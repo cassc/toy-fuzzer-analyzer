@@ -85,5 +85,7 @@ mau-analyzer plot --output-dir ./results
 ``` bash
 cargo install --path crates/ityfuzz-analyzer/ --profile release --force --locked
 ityfuzz-analyzer run -f ityfuzz -b b1 -o ityfuzz-output/timeout-30 --fuzz-timeout-seconds 30
+# Running tests in 20 processes:
+ityfuzz-analyzer run -f ityfuzz -b b1 -o ityfuzz-output/timeout-30 --fuzz-timeout-seconds 30 -j 20
 ityfuzz-analyzer plot ityfuzz-output/timeout-30
 ```

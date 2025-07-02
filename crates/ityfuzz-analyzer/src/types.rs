@@ -20,6 +20,10 @@ pub enum Commands {
 
 #[derive(Parser, Debug)]
 pub struct RunArgs {
+    /// Number of current jobs to run
+    #[arg(short, long, value_name = "NUM", default_value_t = 1)]
+    pub jobs: usize,
+
     /// Path to the fuzzer executable
     #[arg(short, long, value_name = "FILE", default_value = "ityfuzz")]
     pub fuzzer_path: String,
@@ -60,7 +64,7 @@ pub struct StatsEntry {
     pub instructions_covered: u64,
     pub branches_covered: u64,
     // Exists in log but not used
-    // pub total_instructions: u64,
+    pub total_instructions: u64,
     // pub total_coverages: u64,
     pub time_taken_millis: u64,
 }

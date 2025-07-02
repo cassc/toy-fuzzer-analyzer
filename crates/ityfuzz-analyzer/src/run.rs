@@ -10,6 +10,8 @@ use std::collections::HashMap;
 use std::fs::{self};
 use std::path::{Path, PathBuf};
 use std::process::{Command, Stdio};
+use std::sync::Arc;
+use std::sync::Mutex;
 use tracing::debug;
 use tracing::info;
 use tracing::warn;
@@ -22,7 +24,8 @@ pub fn handle_run_command(args: RunArgs) -> Result<()> {
         )
     })?;
 
-    let mut all_contract_stats: HashMap<String, Vec<StatsEntry>> = HashMap::new();
+
+    let all_contract_stats: Arc<Mutex<HashMap<String, Vec<StatsEntry>>>> = Arc::new(Mutex::new(HashMap::new()));
 
     let benchmark_glob_pattern = format!("{}/*", args.benchmark_base_dir.to_string_lossy());
 
@@ -57,74 +60,89 @@ pub fn handle_run_command(args: RunArgs) -> Result<()> {
     );
     pb.set_message("Starting fuzzing...");
 
-    for contract_dir_path in contract_dirs {
-        pb.inc(1);
-        let contract_id = contract_dir_path
-            .file_name()
-            .ok_or_else(|| eyre!("Could not get file name from path: {:?}", contract_dir_path))?
-            .to_string_lossy()
-            .into_owned();
+    let num_threads = args.jobs;
 
-        pb.set_message(format!("Fuzzing contract: {}", contract_id));
+    let pool = rayon::ThreadPoolBuilder::new()
+        .num_threads(num_threads)
+        .build()
+        .wrap_err("Failed to create thread pool")?;
 
-        let contract_files_glob = format!("{}/*", contract_dir_path.to_string_lossy());
-        let mut options = vec![];
-        for option in args.fuzzer_options.iter() {
-            options.push(option.as_str());
-        }
+    pool.scope(|s| {
+        for contract_dir_path in contract_dirs {
+            let pb = pb.clone();
+            let all_contract_stats = Arc::clone(&all_contract_stats);
+            let args = &args;
 
-        options.append(&mut vec!["-t", &contract_files_glob]);
+            s.spawn(move |_| {
+                pb.inc(1);
+                let contract_id = contract_dir_path
+                    .file_name()
+                    .expect("Contract directory should have a name")
+                    .to_string_lossy()
+                    .into_owned();
 
-        match run_program_with_timeout(&args.fuzzer_path, &options[..], args.fuzz_timeout_seconds) {
-            Ok(log_content) => {
-                if log_content.trim().is_empty() {
-                    info!(
-                        "No output from fuzzer for {}, skipping parsing (likely timeout or crash before output).",
-                        contract_id
-                    );
-                    continue;
+                pb.set_message(format!("Fuzzing contract: {}", contract_id));
+
+                let contract_files_glob = format!("{}/*", contract_dir_path.to_string_lossy());
+                let mut options = vec![];
+                for option in args.fuzzer_options.iter() {
+                    options.push(option.as_str());
                 }
-                match parse_log(&log_content, &contract_id) {
-                    Ok(entries) => {
-                        if entries.is_empty() {
-                            warn!(
-                                "No statistical entries parsed for {}, though log was not empty. Log content:\n'{}'",
-                                contract_id, log_content
-                            );
-                        } else {
+
+                options.append(&mut vec!["-t", &contract_files_glob]);
+
+                match run_program_with_timeout(&args.fuzzer_path, &options[..], args.fuzz_timeout_seconds) {
+                    Ok(log_content) => {
+                        if log_content.trim().is_empty() {
                             info!(
-                                "Parsed {} entries for contract {}",
-                                entries.len(),
+                                "No output from fuzzer for {}, skipping parsing (likely timeout or crash before output).",
                                 contract_id
                             );
-                            write_csv(&contract_id, &entries, &args.output_dir)?;
-                            info!(
-                                "CSV saved for {} to {}/{}.instructions.stats.csv",
-                                contract_id,
-                                args.output_dir.display(),
-                                contract_id
-                            );
-                            all_contract_stats.insert(contract_id.clone(), entries);
+                            return;
+                        }
+                        match parse_log(&log_content, &contract_id) {
+                            Ok(entries) => {
+                                if entries.is_empty() {
+                                    warn!(
+                                        "No statistical entries parsed for {}, though log was not empty. Log content:\n'{}'",
+                                        contract_id, log_content
+                                    );
+                                } else {
+                                    info!(
+                                        "Parsed {} entries for contract {}",
+                                        entries.len(),
+                                        contract_id
+                                    );
+                                    write_csv(&contract_id, &entries, &args.output_dir).expect("Failed to write CSV");
+                                    info!(
+                                        "CSV saved for {} to {}/{}.instructions.stats.csv",
+                                        contract_id,
+                                        args.output_dir.display(),
+                                        contract_id
+                                    );
+                                    all_contract_stats.lock().unwrap().insert(contract_id.clone(), entries);
+                                }
+                            }
+                            Err(e) => {
+                                info!(
+                                    "Error parsing log for contract {}: {:?}\nLog content:\n{}",
+                                    contract_id, e, log_content
+                                );
+                            }
                         }
                     }
                     Err(e) => {
-                        info!(
-                            "Error parsing log for contract {}: {:?}\nLog content:\n{}",
-                            contract_id, e, log_content
-                        );
+                        info!("Error running fuzzer for contract {}: {:?}", contract_id, e);
                     }
                 }
-            }
-            Err(e) => {
-                info!("Error running fuzzer for contract {}: {:?}", contract_id, e);
-            }
+            });
         }
-    }
+    });
 
-    if all_contract_stats.is_empty() {
+    if all_contract_stats.lock().unwrap().is_empty() {
         info!("No data collected from any contracts. Cannot generate aggregate plot.");
     } else {
-        aggregate_and_plot_data(&all_contract_stats, &args.output_dir, None)?;
+        aggregate_and_plot_data(&all_contract_stats.lock().unwrap(), &args.output_dir, None)?;
     }
 
     pb.finish_with_message(format!(
@@ -191,7 +209,7 @@ fn parse_log(log_content: &str, contract_id: &str) -> Result<Vec<StatsEntry>> {
     // parse coverage data
     // ^[[32m INFO^[[0m Coverage stat: time-millis: 1749628484080 instructions: 957/2248 branches: 49/112
     let coverage_re = Regex::new(
-        r".*Coverage stat: time-millis: (\d+) instructions: (\d+)/\d+ branches: (\d+)/\d+",
+        r".*Coverage stat: time-millis: (?P<timestamp>\d+) instructions: (?P<instructions_covered>\d+)/(?P<total_instructions>\d+) branches: (?P<branches_covered>\d+)/\d+",
     )
     .wrap_err("Failed to compile 'coverage stat' regex")?;
 
@@ -212,21 +230,26 @@ fn parse_log(log_content: &str, contract_id: &str) -> Result<Vec<StatsEntry>> {
 
         if let Some(current_began_at) = began_at_millis {
             if let Some(caps) = coverage_re.captures(line) {
-                let instructions_covered = caps[2].parse::<u64>().wrap_err_with(|| {
-                    format!("Failed to parse instructions_covered: {}", &caps[2])
+                let instructions_covered = caps["instructions_covered"].parse::<u64>().wrap_err_with(|| {
+                    format!("Failed to parse instructions_covered: {}", &caps["instructions_covered"])
                 })?;
-                let branches_covered = caps[3]
+                let branches_covered = caps["branches_covered"]
                     .parse::<u64>()
-                    .wrap_err_with(|| format!("Failed to parse branches_covered: {}", &caps[3]))?;
-                let timestamp_millis: u64 = caps[1]
+                    .wrap_err_with(|| format!("Failed to parse branches_covered: {}", &caps["branches_covered"]))?;
+                let timestamp_millis: u64 = caps["timestamp"]
                     .parse::<u64>()
-                    .wrap_err_with(|| format!("Failed to parse timestamp_millis: {}", &caps[1]))?;
+                    .wrap_err_with(|| format!("Failed to parse timestamp_millis: {}", &caps["timestamp"]))?;
+
+                let total_instructions = caps["total_instructions"].parse::<u64>().wrap_err_with(|| {
+                    format!("Failed to parse total_instructions: {}", &caps["total_instructions"])
+                })?;
 
                 if timestamp_millis >= current_began_at {
                     let time_taken_millis = timestamp_millis - current_began_at;
                     entries.push(StatsEntry {
                         instructions_covered,
                         branches_covered,
+                        total_instructions,
                         time_taken_millis,
                     });
                 } else {

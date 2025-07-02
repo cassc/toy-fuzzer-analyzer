@@ -56,6 +56,15 @@ pub fn aggregate_and_plot_data(
         return Ok(());
     }
 
+    let mut total_instructions = 0;
+
+    // total instructions in all contracts
+    all_contract_stats.iter().for_each(|(_, stats_vec)| {
+        if let Some(last) =  stats_vec.last(){
+            total_instructions += last.total_instructions;
+        }
+    });
+
     for &ts_nano in &all_timestamps {
         let mut current_total_instructions = 0;
         for stats_vec in all_contract_stats.values() {
@@ -92,11 +101,13 @@ pub fn aggregate_and_plot_data(
             overall_stats_csv_path.display()
         )
     })?;
-    wtr.write_record(["time_seconds", "instructions(k)"])
+    wtr.write_record(["time_seconds", "instructions(k)", "total_instructions(k)"])
         .wrap_err("Failed to write CSV header")?;
 
+    let total_instructions_k = (total_instructions as f64) / 1000.0;
+    let total_instructions_k_str = total_instructions_k.to_string();
     for (time_seconds, instructions_k) in &plot_data {
-        wtr.write_record([time_seconds.to_string(), instructions_k.to_string()])
+        wtr.write_record([time_seconds.to_string(), instructions_k.to_string(), total_instructions_k_str.clone()])
             .wrap_err("Failed to write CSV record")?;
     }
 

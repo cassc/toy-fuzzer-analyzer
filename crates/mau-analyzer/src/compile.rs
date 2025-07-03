@@ -136,7 +136,7 @@ pub fn handle_compile_command(args: CompileArgs) -> Result<()> {
         let solc_binary: String = match (&args.solc_binary, compiler_version){
             (Some(solc_binary), _) => solc_binary.to_string_lossy().into_owned(),
             (None, Some(ref version)) => {
-                format!("{}/.solc-select/artificats/solc-{}/solc-{}", home_dir().unwrap().as_os_str().to_string_lossy(), version, version)
+                format!("{}/.solc-select/artifacts/solc-{}/solc-{}", home_dir().unwrap().as_os_str().to_string_lossy(), version, version)
             },
             _ => "solc".into()
         };

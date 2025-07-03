@@ -74,7 +74,7 @@ pub fn handle_compile_command(args: CompileArgs) -> Result<()> {
         }
 
         let parts: Vec<&str> = line_trimmed.split(',').map(|s| s.trim()).collect();
-        if parts.len() != 2 || parts[0].is_empty() || parts[1].is_empty() {
+        if parts.len() < 2 || parts[0].is_empty() || parts[1].is_empty() {
             info!(
                 "Warning: Skipping malformed line {} in {}: '{}'",
                 line_number + 1,
@@ -86,6 +86,7 @@ pub fn handle_compile_command(args: CompileArgs) -> Result<()> {
 
         let sol_filename_base = parts[0];
         let main_contract_name = parts[1];
+        let compiler_version = parts.get(2).map(|s| s.trim().to_owned());
 
         let sol_file_path = args
             .solc_input_dir
@@ -102,8 +103,8 @@ pub fn handle_compile_command(args: CompileArgs) -> Result<()> {
         let specific_output_dir = args.solc_output_dir.join(sol_filename_base);
 
         pb.set_message(format!(
-            "Processing {} (Main Contract: {})",
-            sol_filename_base, main_contract_name
+            "Processing {} (Main Contract: {}) with Compiler: {:?}",
+            sol_filename_base, main_contract_name, compiler_version
         ));
 
         // Ensure the specific output directory for this contract exists
@@ -130,11 +131,17 @@ pub fn handle_compile_command(args: CompileArgs) -> Result<()> {
         ];
 
         info!("  Compiling with: solc {}", solc_args.join(" "));
-        let solc_binary = args.solc_binary.as_deref().unwrap_or("solc".as_ref());
+        let solc_binary: String = match (&args.solc_binary, compiler_version){
+            (Some(solc_binary), _) => solc_binary.to_string_lossy().into_owned(),
+            (None, Some(ref version)) => {
+                format!("~/.solc-select/artificats/solc-{}/solc-{}", version, version)
+            },
+            _ => "solc".into()
+        };
         let mut command = Command::new("timeout");
         command
             .arg(format!("{}s", args.solc_timeout_seconds))
-            .arg(solc_binary)
+            .arg(&solc_binary)
             .args(solc_args)
             .stdout(Stdio::null()) // Use piped might block the thread if we don't process the output
             .stderr(Stdio::null());
@@ -144,8 +151,8 @@ pub fn handle_compile_command(args: CompileArgs) -> Result<()> {
             .status() // Use status() for simple success/failure, or output() to capture
             .wrap_err_with(|| {
                 format!(
-                    "Failed to execute solc ({}) with timeout. Is timeout and solc installed?",
-                    solc_binary.display()
+                    "Failed to execute solc ({}) with timeout. ",
+                    solc_binary
                 )
             })?;
 

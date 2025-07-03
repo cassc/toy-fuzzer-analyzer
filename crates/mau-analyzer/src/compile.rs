@@ -130,7 +130,7 @@ pub fn handle_compile_command(args: CompileArgs) -> Result<()> {
             specific_output_dir_str.as_ref(),
         ];
 
-        info!("  Compiling with: solc {}", solc_args.join(" "));
+
         let solc_binary: String = match (&args.solc_binary, compiler_version){
             (Some(solc_binary), _) => solc_binary.to_string_lossy().into_owned(),
             (None, Some(ref version)) => {
@@ -138,6 +138,9 @@ pub fn handle_compile_command(args: CompileArgs) -> Result<()> {
             },
             _ => "solc".into()
         };
+
+        info!("  Compiling with: solc {}", solc_args.join(" "));
+
         let mut command = Command::new("timeout");
         command
             .arg(format!("{}s", args.solc_timeout_seconds))

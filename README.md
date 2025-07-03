@@ -29,6 +29,12 @@ mau-analyzer compile --solc-input-dir ./release/benchmarks/B1/sol/ \
   --generate-ptx \
   --list-file ./release/benchmarks/assets/B1.list
 
+mau-analyzer compile --solc-input-dir ./solc_v8_noargs/ \
+  --solc-output-dir solc_v8_noargs_data \
+  --generate-ptx \
+  --list-file ./solc_v8_noargs_smartian_format.json.meta
+
+
 # Compile and generate ptx files for the B3 contracts
 mau-analyzer compile --solc-input-dir ./release/benchmarks/B3/sol/ \
   --solc-output-dir b3 \

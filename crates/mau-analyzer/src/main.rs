@@ -24,12 +24,13 @@ fn main() -> Result<()> {
     };
 
     let file_appender = tracing_appender::rolling::never(
-        "/tmp/logs",
+        ".",
         format!(
             "mau-analyzer-{}.log",
-            chrono::Local::now().format("%Y-%m-%d")
+            chrono::Utc::now().format("%Y-%m-%d_%H-%M-%S")
         ),
     );
+
     let (non_blocking_appender, _guard) = tracing_appender::non_blocking(file_appender);
 
     let subscriber = FmtSubscriber::builder()

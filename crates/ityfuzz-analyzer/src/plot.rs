@@ -94,25 +94,9 @@ pub fn aggregate_and_plot_data(
     }
 
     // store the overall csv stats
-    let overall_stats_csv_path =
-        plot_output_dir.join(format!("{}_overall_instructions_stats.csv", title_prefix));
-    let mut wtr = csv::Writer::from_path(&overall_stats_csv_path).wrap_err_with(|| {
-        format!(
-            "Failed to create CSV writer for {}",
-            overall_stats_csv_path.display()
-        )
-    })?;
-    wtr.write_record(["time_seconds", "instructions(k)", "total_instructions(k)"])
-        .wrap_err("Failed to write CSV header")?;
-
     let total_instructions_k = (total_instructions as f64) / 1000.0;
-    let total_instructions_k_str = total_instructions_k.to_string();
-    for (time_seconds, instructions_k) in &plot_data {
-        wtr.write_record([time_seconds.to_string(), instructions_k.to_string(), total_instructions_k_str.clone()])
-            .wrap_err("Failed to write CSV record")?;
-    }
-
-    wtr.flush().wrap_err("Failed to flush CSV writer")?;
+    store_overall_stats_csv(plot_output_dir, &title_prefix, total_instructions_k, &plot_data)?;
+    store_simplified_stats_csv(plot_output_dir, &title_prefix, total_instructions_k, &plot_data)?;
 
     let plot_path = plot_output_dir.join(format!("{}_overall_instructions_plot.png", title_prefix));
 
@@ -184,6 +168,57 @@ pub fn aggregate_and_plot_data(
     root_area.present().wrap_err("Failed to present chart")?;
     info!("Plot saved to {}", plot_path.display());
 
+    Ok(())
+}
+
+fn store_overall_stats_csv(plot_output_dir: &Path, title_prefix: &str, total_instructions_k: f64, plot_data: &[(f64, f64)]) -> Result<()> {
+    let overall_stats_csv_path =
+        plot_output_dir.join(format!("{}_overall_instructions_stats.csv", title_prefix));
+    let mut wtr = csv::Writer::from_path(&overall_stats_csv_path).wrap_err_with(|| {
+        format!(
+            "Failed to create CSV writer for {}",
+            overall_stats_csv_path.display()
+        )
+    })?;
+    wtr.write_record(["time_seconds", "instructions(k)", "total_instructions(k)"])
+        .wrap_err("Failed to write CSV header")?;
+
+
+    let total_instructions_k_str = total_instructions_k.to_string();
+    for (time_seconds, instructions_k) in plot_data {
+        wtr.write_record([time_seconds.to_string(), instructions_k.to_string(), total_instructions_k_str.clone()])
+            .wrap_err("Failed to write CSV record")?;
+    }
+
+    wtr.flush().wrap_err("Failed to flush CSV writer")?;
+    Ok(())
+}
+
+fn store_simplified_stats_csv(plot_output_dir: &Path, title_prefix: &str, total_instructions_k: f64, plot_data: &[(f64, f64)]) -> Result<()> {
+    let overall_stats_csv_path =
+        plot_output_dir.join(format!("{}_overall_instructions_stats_simplified.csv", title_prefix));
+    let mut wtr = csv::Writer::from_path(&overall_stats_csv_path).wrap_err_with(|| {
+        format!(
+            "Failed to create CSV writer for {}",
+            overall_stats_csv_path.display()
+        )
+    })?;
+    wtr.write_record(["time_seconds", "instructions(k)", "total_instructions(k)"])
+        .wrap_err("Failed to write CSV header")?;
+
+    let total_instructions_k_str = total_instructions_k.to_string();
+    let time_steps= [1.0, 5.0, 10.0, 30.0];
+    let data:&Vec<(f64, f64)>  = &time_steps.iter().map(|t|{
+        let instr = plot_data.iter().filter(|(x, _)| *x<=*t).next_back().unwrap().1;
+        (*t, instr)
+    }).collect();
+
+    for (time_seconds, instructions_k) in data {
+        wtr.write_record([time_seconds.to_string(), instructions_k.to_string(), total_instructions_k_str.clone()])
+            .wrap_err("Failed to write CSV record")?;
+    }
+
+    wtr.flush().wrap_err("Failed to flush CSV writer")?;
     Ok(())
 }
 

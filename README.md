@@ -38,7 +38,7 @@ mau-analyzer compile --solc-input-dir ./release/benchmarks/B3/sol/ \
   --solc-binary ~/.solcx/solc-v0.4.25
 
 # Run the fuzzer
-export LD_LIBRARY_PATH=./runner/
+export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/app/runner/
 
 # Run b1 contracts in CPU
 mau-analyzer run \

@@ -6,6 +6,7 @@ use eyre::{Result, WrapErr, eyre};
 use glob::glob;
 use indicatif::{ProgressBar, ProgressStyle};
 use regex::Regex;
+use tracing::error;
 use std::collections::HashMap;
 use std::fs::{self};
 use std::path::{Path, PathBuf};
@@ -178,22 +179,20 @@ fn run_program_with_timeout(
 
     if !output.status.success() {
         if !stderr_str.is_empty() {
-            info!(
-                "Stderr from running {}:\n{}",
+            error!(
+                "Stderr from running {} {:?}:\n{}",
                 program_path,
+                &args,
                 stderr_str.trim()
             );
         }
         if output.status.code() == Some(124) {
-            info!("Program {} timed out.", program_path);
-            // For timeout, we still want to process any stdout produced, so we don't return Err here.
+            info!("Program {} {:?} timed out.", program_path, &args);
         } else {
             info!(
-                "Program {} (or timeout command) exited with status {}.",
-                program_path, output.status
+                "Program {} {:?} exited with status {}.",
+                program_path, &args, output.status
             );
-            // Depending on strictness, one might return an Err here.
-            // For now, we allow processing of stdout even if the process failed non-timeout.
         }
     }
 

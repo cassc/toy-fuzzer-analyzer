@@ -1,11 +1,11 @@
 use clap::Parser;
-use compile::handle_compile_command;
+use compile::{handle_compile_command, handle_ptx_command};
 use eyre::Result;
 use plot::handle_plot_command;
 use run::handle_run_command;
 use std::env;
 use tracing::{Level, info};
-use tracing_subscriber::{FmtSubscriber, prelude::*};
+use tracing_subscriber::FmtSubscriber;
 use types::{Cli, Commands};
 
 mod compile;
@@ -58,6 +58,9 @@ fn main() -> Result<()> {
         Commands::Compile(args) => {
             info!("Executing 'compile' command...");
             handle_compile_command(args)?;
+        }
+        Commands::PTX(args) => {
+            handle_ptx_command(args)?;
         }
     }
 

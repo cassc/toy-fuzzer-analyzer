@@ -1,14 +1,13 @@
 use std::{
-    fs::{self, File},
-    io::{BufRead, BufReader},
-    process::{Command, Stdio},
+    fs::{self, File}, io::{BufRead, BufReader}, path::PathBuf, process::{Command, Stdio}
 };
 
-use crate::types::CompileArgs;
+use crate::types::{CompileArgs, PTXArgs};
 use eyre::{Context, Result, eyre};
 use indicatif::{ProgressBar, ProgressStyle};
 use tracing::{error, info};
 use dirs::home_dir;
+use glob::glob;
 
 
 pub fn handle_compile_command(args: CompileArgs) -> Result<()> {
@@ -55,8 +54,8 @@ pub fn handle_compile_command(args: CompileArgs) -> Result<()> {
         ProgressStyle::with_template(
             "{spinner:.green} [{elapsed_precise}] [{wide_bar:.cyan/blue}] {pos}/{len} ({eta})\n{msg}",
         )
-        .unwrap()
-        .progress_chars("█▓▒░ "),
+            .unwrap()
+            .progress_chars("█▓▒░ "),
     );
     pb.set_message("Starting compilation...");
 
@@ -190,74 +189,10 @@ pub fn handle_compile_command(args: CompileArgs) -> Result<()> {
 
         // Generate PTX files if enabled
         if args.generate_ptx {
-            info!("  Generating PTX files for {}...", sol_filename_base);
-
-            let bin_path = specific_output_dir.join(format!("{}.bin", main_contract_name));
-            let bytecode_ll = specific_output_dir.join("bytecode.ll");
-            let kernel_bc = specific_output_dir.join("kernel.bc");
-            let kernel_ll = specific_output_dir.join("kernel.ll");
-            let kernel_ptx = specific_output_dir.join("kernel.ptx");
-
-            // Step 1: Generate bytecode.ll
-            let status = Command::new("ptxsema")
-                .arg(bin_path)
-                .arg("-o")
-                .arg(&bytecode_ll)
-                .arg("--hex")
-                .arg("--dump")
-                .status()
-                .wrap_err("Failed to run ptxsema")?;
-
-            if !status.success() {
-                error!("  ptxsema failed for {}", sol_filename_base);
-                continue;
-            }
-
-            // Step 2: Link with runtime
-            let status = Command::new("llvm-link")
-                .arg("rt.o.bc")
-                .arg(&bytecode_ll)
-                .arg("-o")
-                .arg(&kernel_bc)
-                .status()
-                .wrap_err("Failed to run llvm-link")?;
-
-            if !status.success() {
-                error!("  llvm-link failed for {}", sol_filename_base);
+            if let Err(e) = generate_ptx(sol_filename_base, main_contract_name) {
+                error!("  ERROR: Failed to generate PTX for {}: {}", sol_filename_base, e);
                 failed_contracts.push(sol_filename_base.to_string());
-                continue;
             }
-
-            // Step 3: Disassemble to human-readable LLVM IR
-            let status = Command::new("llvm-dis")
-                .arg(&kernel_bc)
-                .arg("-o")
-                .arg(&kernel_ll)
-                .status()
-                .wrap_err("Failed to run llvm-dis")?;
-
-            if !status.success() {
-                error!("  llvm-dis failed for {}", sol_filename_base);
-                failed_contracts.push(sol_filename_base.to_string());
-                continue;
-            }
-
-            // Step 4: Generate PTX
-            let status = Command::new("llc-16")
-                .arg("-mcpu=sm_86")
-                .arg(&kernel_bc)
-                .arg("-o")
-                .arg(&kernel_ptx)
-                .status()
-                .wrap_err("Failed to run llc-16")?;
-
-            if !status.success() {
-                error!("  llc-16 failed for {}", sol_filename_base);
-                failed_contracts.push(sol_filename_base.to_string());
-                continue;
-            }
-
-            info!("  PTX generation complete for {}", sol_filename_base);
         }
 
         let entries = fs::read_dir(&specific_output_dir).wrap_err_with(|| {
@@ -308,6 +243,98 @@ pub fn handle_compile_command(args: CompileArgs) -> Result<()> {
     } else {
         info!("\nAll contracts compiled successfully.");
     }
+
+    Ok(())
+}
+
+/// Generates PTX files for a given contract binary folder and main contract
+/// name. Assuming contract deployment binary has already been generated
+fn generate_ptx(contract_binary_folder_path: &str, main_contract_name: &str)->Result<()>{
+    info!("  Generating PTX files for {} ", contract_binary_folder_path);
+    let contract_binary_folder = PathBuf::from(contract_binary_folder_path);
+
+    let bin_path = contract_binary_folder.join(format!("{}.bin", main_contract_name));
+    let bytecode_ll = contract_binary_folder.join("bytecode.ll");
+    let kernel_bc = contract_binary_folder.join("kernel.bc");
+    let kernel_ll = contract_binary_folder.join("kernel.ll");
+    let kernel_ptx = contract_binary_folder.join("kernel.ptx");
+
+    // Step 1: Generate bytecode.ll
+    let status = Command::new("ptxsema")
+        .arg(bin_path)
+        .arg("-o")
+        .arg(&bytecode_ll)
+        .arg("--hex")
+        .arg("--dump")
+        .status()
+        .wrap_err("Failed to run ptxsema")?;
+
+    if !status.success() {
+        return Err(eyre!("ptxsema failed for {}", contract_binary_folder.display()));
+    }
+
+    let status = Command::new("llvm-link")
+        .arg("rt.o.bc")
+        .arg(&bytecode_ll)
+        .arg("-o")
+        .arg(&kernel_bc)
+        .status()
+        .wrap_err("Failed to run llvm-link")?;
+
+    if !status.success() {
+        return Err(eyre!("llvm-link failed for {}", contract_binary_folder_path));
+    }
+
+    // Step 3: Disassemble to human-readable LLVM IR
+    let status = Command::new("llvm-dis")
+        .arg(&kernel_bc)
+        .arg("-o")
+        .arg(&kernel_ll)
+        .status()
+        .wrap_err("Failed to run llvm-dis")?;
+
+    if !status.success() {
+        return Err(eyre!("llvm-dis failed for {}", contract_binary_folder_path));
+    }
+
+    // Step 4: Generate PTX
+    let status = Command::new("llc-16")
+        .arg("-mcpu=sm_86")
+        .arg(&kernel_bc)
+        .arg("-o")
+        .arg(&kernel_ptx)
+        .status()
+        .wrap_err("Failed to run llc-16")?;
+
+    if !status.success() {
+        return Err(eyre!("llc-16 failed for {}", contract_binary_folder_path));
+    }
+
+    info!("  PTX generation complete for {}", contract_binary_folder_path);
+    Ok(())
+}
+
+
+pub fn handle_ptx_command(args: PTXArgs) -> Result<()> {
+    let pattern = format!("{}/*/*.bin", args.solc_output_dir.display());
+    info!("Searching for *.bin files matching pattern: {}", pattern);
+
+    let found_binaries = glob(&pattern)
+        .wrap_err("Failed to read glob pattern")?
+        .filter_map(Result::ok)
+        .collect::<Vec<PathBuf>>();
+
+    found_binaries.iter().for_each(|bin_path| {
+        info!("Found binary file: {}", bin_path.display());
+        let contract_binary_folder = bin_path.parent()
+            .expect("Binary file should have a parent directory");
+        let main_contract_name = bin_path.file_stem()
+            .and_then(|s| s.to_str())
+            .expect("Binary file should have a valid name");
+        if let Err(e) = generate_ptx(contract_binary_folder.to_str().unwrap(), main_contract_name) {
+            error!("Failed to generate PTX for {}: {}", bin_path.display(), e);
+        }
+    });
 
     Ok(())
 }

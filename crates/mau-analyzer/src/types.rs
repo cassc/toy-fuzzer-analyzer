@@ -13,12 +13,12 @@ pub struct CompileArgs {
     pub list_file: PathBuf,
 
     /// Base directory containing .sol files to compile (e.g., release/benchmarks/B1/sol)
-    #[arg(long, value_name = "DIR", default_value = "release/benchmarks/B1/sol")]
+    #[arg(long, value_name = "DIR")]
     pub solc_input_dir: PathBuf,
 
     /// Base output directory for compiled contracts (e.g., b1 or output_b1)
     /// Each contract will get a subdirectory here: <solc_output_dir>/<contract_filename_base>/
-    #[arg(long, value_name = "DIR", default_value = "b1")]
+    #[arg(long, value_name = "DIR" )]
     pub solc_output_dir: PathBuf,
 
     /// Timeout in seconds for solc compilation per contract
@@ -35,6 +35,15 @@ pub struct CompileArgs {
 }
 
 #[derive(Parser, Debug)]
+pub struct PTXArgs{
+    /// Output directory of `compile` command. Folder structure should be:
+    /// <solc_output_dir>/<contract_folder>/<main_contract_name>.bin
+    #[arg(long, value_name = "DIR")]
+    pub solc_output_dir: PathBuf,
+
+}
+
+#[derive(Parser, Debug)]
 #[command(author, version, about = "Analyzes fuzzer output or plots existing data", long_about = None)]
 pub struct Cli {
     #[command(subcommand)]
@@ -47,7 +56,10 @@ pub enum Commands {
     Run(RunArgs),
     /// Plot results from existing CSV data in the output directory
     Plot(PlotArgs),
+    /// Compile contracts from source code and optionally generate PTX files
     Compile(CompileArgs),
+    /// Generate PTX files for compiled contracts
+    PTX(PTXArgs),
 }
 
 #[derive(Parser, Debug)]

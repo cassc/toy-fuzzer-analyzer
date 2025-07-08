@@ -43,6 +43,9 @@ mau-analyzer compile --solc-input-dir ./release/benchmarks/B3/sol/ \
   --generate-ptx \
   --solc-binary ~/.solcx/solc-v0.4.25
 
+# Generate PTX files using the compiled binaries
+mau-analyzer ptx --solc-output-dir b3
+
 # Run the fuzzer
 export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:/app/runner/
 

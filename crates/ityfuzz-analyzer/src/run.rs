@@ -90,7 +90,8 @@ pub fn handle_run_command(args: RunArgs) -> Result<()> {
                     options.push(option.as_str());
                 }
 
-                let work_dir = format!(".work-dirs/{}", contract_id);
+                let now = chrono::Utc::now().format("%Y-%m-%d_%H-%M-%S").to_string();
+                let work_dir = format!(".work-dirs/{}/{}", now, contract_id);
                 options.append(&mut vec!["-t", &contract_files_glob]);
                 options.append(&mut vec!["-w", &work_dir]);
 

@@ -31,10 +31,8 @@ pub struct RunArgs {
     /// Additional arguments to be added before the `-t <target-contract-folder>/*` argument for ityfuzz
     #[arg(long,
           default_values_t = vec![
-            "evm".to_string(),
-            "--run-forever".to_string(),
-            "-d".to_string(),
-            "all".to_string()
+              "evm".to_string(),
+              "--run-forever".to_string(),
           ],
           value_name = "ARGS")]
     pub fuzzer_options: Vec<String>,

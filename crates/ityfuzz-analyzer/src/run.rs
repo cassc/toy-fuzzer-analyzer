@@ -90,7 +90,9 @@ pub fn handle_run_command(args: RunArgs) -> Result<()> {
                     options.push(option.as_str());
                 }
 
+                let work_dir = format!(".work-dirs/{}", contract_id);
                 options.append(&mut vec!["-t", &contract_files_glob]);
+                options.append(&mut vec!["-w", &work_dir]);
 
                 match run_program_with_timeout(&args.fuzzer_path, &options[..], args.fuzz_timeout_seconds) {
                     Ok(log_content) => {

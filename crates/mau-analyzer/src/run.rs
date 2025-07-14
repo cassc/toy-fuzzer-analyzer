@@ -13,6 +13,21 @@ use std::process::{Command, Stdio};
 use tracing::error;
 use tracing::info;
 
+fn write_log_file(folder: &str, contract_id: &str, log_content: &str) -> Result<()> {
+    let log_file_path = format!("raw-logs/{}/{}.log", folder, contract_id);
+    // make parent folder if it does not exist
+    let parent_dir = Path::new(&log_file_path).parent().unwrap();
+    fs::create_dir_all(parent_dir).wrap_err_with(|| {
+        format!(
+            "Failed to create parent directory for log file: {}",
+            parent_dir.display()
+        )
+    })?;
+    fs::write(&log_file_path, log_content)?;
+    Ok(())
+}
+
+
 pub fn handle_run_command(args: RunArgs) -> Result<()> {
     fs::create_dir_all(&args.output_dir).wrap_err_with(|| {
         format!(
@@ -97,6 +112,14 @@ pub fn handle_run_command(args: RunArgs) -> Result<()> {
 
         match run_program_with_timeout(&args.fuzzer_path, &options[..], args.fuzz_timeout_seconds) {
             Ok(log_content) => {
+                let folder = args.benchmark_base_dir.canonicalize().unwrap();
+                let folder = folder.file_name().unwrap_or_default().to_string_lossy();
+                if let Err(e) = write_log_file(&folder, &contract_id , &log_content){
+                    error!(
+                        "Failed to write log file for contract {}: {:?}",
+                        contract_id, e
+                    );
+                }
                 if log_content.trim().is_empty() {
                     info!(
                         "No output from fuzzer for {}, skipping parsing (likely timeout or crash before output).",
@@ -205,12 +228,13 @@ fn run_program_with_timeout(
                 "Program {} (or timeout command) exited with status {}.",
                 program_path, output.status
             );
-            // Depending on strictness, one might return an Err here.
-            // For now, we allow processing of stdout even if the process failed non-timeout.
         }
     }
 
-    Ok(stdout_str)
+
+    let output= stdout_str + &stderr_str;
+
+    Ok(output)
 }
 
 fn parse_log(log_content: &str, contract_id: &str) -> Result<Vec<StatsEntry>> {

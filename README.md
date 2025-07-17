@@ -27,6 +27,7 @@ mau-analyzer compile --solc-input-dir ./release/benchmarks/B1/sol/ \
 mau-analyzer compile --solc-input-dir ./release/benchmarks/B1/sol/ \
   --solc-output-dir b1 \
   --generate-ptx \
+  --solc-binary ~/.solcx/solc-v0.4.25 \
   --list-file ./release/benchmarks/assets/B1.list
 
 mau-analyzer compile --solc-input-dir ./solc_v8_noargs/ \

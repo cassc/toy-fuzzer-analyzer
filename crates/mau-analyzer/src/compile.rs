@@ -190,7 +190,7 @@ pub fn handle_compile_command(args: CompileArgs) -> Result<()> {
         // Generate PTX files if enabled
         if args.generate_ptx {
             if let Err(e) = generate_ptx(sol_filename_base, main_contract_name) {
-                error!("  ERROR: Failed to generate PTX for {}: {}", sol_filename_base, e);
+                error!("  ERROR: Failed to generate PTX for {}: {:?}", sol_filename_base, e);
                 failed_contracts.push(sol_filename_base.to_string());
             }
         }
@@ -332,7 +332,7 @@ pub fn handle_ptx_command(args: PTXArgs) -> Result<()> {
             .and_then(|s| s.to_str())
             .expect("Binary file should have a valid name");
         if let Err(e) = generate_ptx(contract_binary_folder.to_str().unwrap(), main_contract_name) {
-            error!("Failed to generate PTX for {}: {}", bin_path.display(), e);
+            error!("Failed to generate PTX for {}: {:?}", bin_path.display(), e);
         }
     });
 

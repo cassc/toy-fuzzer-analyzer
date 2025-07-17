@@ -189,7 +189,7 @@ pub fn handle_compile_command(args: CompileArgs) -> Result<()> {
 
         // Generate PTX files if enabled
         if args.generate_ptx {
-            if let Err(e) = generate_ptx(sol_filename_base, main_contract_name) {
+            if let Err(e) = generate_ptx(specific_output_dir.to_str().expect("Unsupported path name"), main_contract_name) {
                 error!("  ERROR: Failed to generate PTX for {}: {:?}", sol_filename_base, e);
                 failed_contracts.push(sol_filename_base.to_string());
             }

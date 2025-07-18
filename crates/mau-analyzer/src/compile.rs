@@ -266,6 +266,7 @@ fn generate_ptx(contract_binary_folder_path: &str, main_contract_name: &str)->Re
         .arg(&bytecode_ll)
         .arg("--hex")
         .arg("--dump")
+        .arg("--fsanitize=intsan")
         .status()
         .wrap_err("Failed to run ptxsema")?;
 

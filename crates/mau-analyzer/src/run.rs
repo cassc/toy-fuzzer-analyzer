@@ -120,6 +120,27 @@ pub fn handle_run_command(args: RunArgs) -> Result<()> {
                         contract_id, e
                     );
                 }
+                
+                // Check for CUDA system errors
+                if log_content.contains("SYSTEM ERROR : [Cuda]") {
+                    if args.abort_on_cuda_error {
+                        error!(
+                            "CUDA system error detected for contract {}. Aborting entire analysis run. Check the log file at raw-logs/{}/{}.log",
+                            contract_id, folder, contract_id
+                        );
+                        return Err(eyre!(
+                            "CUDA system error detected in contract {}. Analysis aborted.",
+                            contract_id
+                        ));
+                    } else {
+                        error!(
+                            "CUDA system error detected for contract {}. Skipping this contract. Check the log file at raw-logs/{}/{}.log",
+                            contract_id, folder, contract_id
+                        );
+                        continue;
+                    }
+                }
+                
                 if log_content.trim().is_empty() {
                     info!(
                         "No output from fuzzer for {}, skipping parsing (likely timeout or crash before output).",

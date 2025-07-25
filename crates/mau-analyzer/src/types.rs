@@ -87,6 +87,10 @@ pub struct RunArgs {
     /// Whether to use PTX files for GPU execution (requires pre-compiled kernel.ptx files in the output directory)
     #[arg(long)]
     pub use_ptx: bool,
+
+    /// Abort the entire analysis run when encountering CUDA system errors
+    #[arg(long, default_value_t = false)]
+    pub abort_on_cuda_error: bool,
 }
 
 #[derive(Parser, Debug)]
